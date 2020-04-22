@@ -1,0 +1,4 @@
+/data
+/target
+**/*.rs.bk
+**/.*.sw*
