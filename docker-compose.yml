@@ -15,3 +15,6 @@ services:
     stdin_open: true
     tty: true
     entrypoint: /bin/sh
+    depends_on:
+      - sonic
+      - db
