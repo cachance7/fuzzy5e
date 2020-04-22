@@ -78,7 +78,7 @@ cd fuzzy5e && ./fuzzy5e
 
 - Start the program with `fuzzy5e` helper script
 - Type to begin searching
-- `Ctrl+N` / `Ctrl+N`: select next / previous match
+- `Ctrl+N` / `Ctrl+P`: select next / previous match
 - `Up` / `Down` / `PgUp` / `PgDown`: scroll the selected content up or down
 - `Esc`: quit
 
