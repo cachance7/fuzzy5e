@@ -15,5 +15,3 @@ services:
     stdin_open: true
     tty: true
     entrypoint: /bin/sh
-    volumes:
-      - "./src:/opt/fuzzy5e/src"
