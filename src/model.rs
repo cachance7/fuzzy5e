@@ -838,7 +838,7 @@ fn calc_modifier(val: i32) -> i32 {
 /// Formats a single stat
 fn format_stat(val: i32) -> String {
     let modifier = calc_modifier(val);
-    let sign = if modifier >= 0 { "+" } else { "-" };
+    let sign = if modifier >= 0 { "+" } else { "" };
     let stat_fmt = format!("{}({}{})", val, sign, modifier);
     if stat_fmt.len() == 5 {
         format!("  {}  ", stat_fmt)

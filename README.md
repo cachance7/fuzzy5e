@@ -1,9 +1,6 @@
 [![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
 [![MIT License][license-shield]][license-url]
-[![LinkedIn][linkedin-shield]][linkedin-url]
 
 
 
@@ -17,15 +14,6 @@
 
   <p align="center">
     A D&D 5th edition reference for your terminal.
-    <br />
-    <a href="https://github.com/cachance7/fuzzy5e"><strong>Explore the docs »</strong></a>
-    <br />
-    <br />
-    <a href="https://github.com/cachance7/fuzzy5e">View Demo</a>
-    ·
-    <a href="https://github.com/cachance7/fuzzy5e/issues">Report Bug</a>
-    ·
-    <a href="https://github.com/cachance7/fuzzy5e/issues">Request Feature</a>
   </p>
 </p>
 
@@ -39,8 +27,7 @@
 * [Getting Started](#getting-started)
   * [Prerequisites](#prerequisites)
   * [Installation](#installation)
-* [Usage](#usage)
-* [Roadmap](#roadmap)
+  * [Usage](#usage)
 * [Contributing](#contributing)
 * [License](#license)
 * [Contact](#contact)
@@ -51,55 +38,49 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-[![Product Name Screen Shot][product-screenshot]](https://example.com)
+As a DM I find myself constantly looking up spells and monster stat blocks while running the game. As a programmer, the terminal is my most concise at-a-glance space for text information. After years of struggling to juggle browser windows and tabs, I decided to build this as a sort of quick reference and HUD for my most commonly referenced information.
 
+NOTE: This is very much a **_work in progress_**.
 
 ### Built With
 
-* [Rust](https://www.rust-lang.org/)
-* [tuikit](https://github.com/lotabout/tuikit)
-* [5e-database](https://github.com/bagelbits/5e-database)
-* [Sonic](https://github.com/valeriansaliou/sonic)
-* [Docker](https://www.docker.com/)
+* [Rust](https://www.rust-lang.org/) - this app is written in rust
+* [tuikit](https://github.com/lotabout/tuikit) - leaned on this heavily for the terminal UI presentation
+* [5e-database](https://github.com/bagelbits/5e-database) - information is sourced from here
+* [Sonic](https://github.com/valeriansaliou/sonic) - used to index the information for quick on-the-fly lookup
+* [Docker](https://www.docker.com/) - for running the dependent services and redistributing
 
 
 <!-- GETTING STARTED -->
 ## Getting Started
 
-To get a local copy up and running follow these simple steps.
+fuzzy5e is a terminal UI written in Rust, but it relies on several external services to function. The easiest way to get up and running is to use Docker and docker-compose.
 
 ### Prerequisites
 
-fuzzy5e is a small terminal UI, but it relies on several external services to function. The easiest way to get up and running is to have docker and docker-compose.
+- [Install Docker & docker-compose](https://docs.docker.com/get-docker/)
+
 
 ### Installation
 
 1. Clone the repo
 ```sh
-git clone https://github.com/cachance7/fuzzy5e.git
+git clone https://github.com/cachance7/fuzzy5e
 ```
 2. Run the helper script. After pulling and building the containers there is a one-time indexing that will occur.
 ```sh
-./fuzzy5e
+cd fuzzy5e && ./fuzzy5e
 ```
+3. Enjoy!
 
 
+### Usage
 
-<!-- USAGE EXAMPLES -->
-## Usage
-
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
-
-_For more examples, please refer to the [Documentation](https://example.com)_
-
-
-
-<!-- ROADMAP -->
-## Roadmap
-
-See the [open issues](https://github.com/cachance7/fuzzy5e/issues) for a list of proposed features (and known issues).
-
-
+- Start the program with `fuzzy5e` helper script
+- Type to begin searching
+- `Ctrl+N` / `Ctrl+N`: select next / previous match
+- `Up` / `Down` / `PgUp` / `PgDown`: scroll the selected content up or down
+- `Esc`: quit
 
 <!-- CONTRIBUTING -->
 ## Contributing
@@ -123,16 +104,9 @@ Distributed under the MIT License. See `LICENSE` for more information.
 Project Link: [https://github.com/cachance7/fuzzy5e](https://github.com/cachance7/fuzzy5e)
 
 
-
-<!-- ACKNOWLEDGEMENTS -->
 ## Acknowledgements
-
-* []()
-* []()
-* []()
-
-
-
+* [dnd5api](http://dnd5eapi.co/)
+* [Gary Gygax](https://en.wikipedia.org/wiki/Gary_Gygax)
 
 
 <!-- MARKDOWN LINKS & IMAGES -->
