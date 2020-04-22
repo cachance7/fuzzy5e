@@ -17,7 +17,9 @@
   </p>
 </p>
 
-
+<p align="center">
+<img src="fuzzy5e.gif" height="400" width="600"/>
+</p>
 
 <!-- TABLE OF CONTENTS -->
 ## Table of Contents
