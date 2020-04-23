@@ -13,11 +13,12 @@ if [[ $? != 0 ]]; then
   exit 1
 fi
 
+echo "Starting search stack..."
+docker-compose up -d
+
 if [[ -f "$idx_file" ]]; then
   docker-compose exec fuzzy5e bash -c 'SONIC_ADDR=sonic:1491 MONGO_ADDR=db:27017 fuzzy5e'
 else
-  echo "Starting search stack..."
-  docker-compose up -d
   echo "Running first-run indexing. This will take a minute..."
   docker-compose exec fuzzy5e bash -c 'SONIC_ADDR=sonic:1491 MONGO_ADDR=db:27017 fuzzy5e reindex'
   echo "Done!"
