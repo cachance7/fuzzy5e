@@ -1480,9 +1480,19 @@ impl ScrollDraw for Feature {
         let mut row: i32 = -(i32::try_from(scroll).unwrap());
         row += print(canvas, row, col, &self.name, Attr::from(Effect::BOLD))?;
         if let Ok(class) = self.document.get_document("class") {
-            if let Ok(name) = class.get_str("name") {
-                row += print(canvas, row, col, &name, Attr::default())?;
+            let mut s = Vec::default();
+            if let Ok(level) = self.document.get_i32("level") {
+                s.push(format!("Level {}", level));
             }
+            if let Ok(name) = class.get_str("name") {
+                s.push(String::from(name));
+            }
+            if let Ok(subclass) = self.document.get_document("subclass") {
+                if let Ok(name) = subclass.get_str("name") {
+                    s.push(format!("({})", name));
+                }
+            }
+            row += print(canvas, row, col, &s.join(" "), Attr::default())?;
         }
         row += 1;
 
