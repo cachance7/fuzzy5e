@@ -24,6 +24,7 @@ pub enum Model {
     Condition(Condition),
     MagicSchool(MagicSchool),
     Equipment(Equipment),
+    Feature(Feature),
 }
 
 quick_error! {
@@ -44,6 +45,7 @@ impl Model {
             Self::Condition(m) => Ok(Box::new(m.clone())),
             Self::MagicSchool(m) => Ok(Box::new(m.clone())),
             Self::Equipment(m) => Ok(Box::new(m.clone())),
+            Self::Feature(m) => Ok(Box::new(m.clone())),
             _ => Err(Box::new(ModelError::NoInnerIndex("Model"))),
         }
     }
@@ -62,6 +64,7 @@ impl DisplayName for Model {
             Self::Condition(m) => m.display_name(),
             Self::MagicSchool(m) => m.display_name(),
             Self::Equipment(m) => m.display_name(),
+            Self::Feature(m) => m.display_name(),
             Self::Unknown(m) => (
                 String::from(m.get_str("name").unwrap_or("")),
                 Attr::default(),
@@ -77,6 +80,7 @@ impl Model {
             Model::MagicSchool(m) => m.draw(canvas, scroll),
             Model::Monster(m) => m.draw(canvas, scroll),
             Model::Equipment(m) => m.draw(canvas, scroll),
+            Model::Feature(m) => m.draw(canvas, scroll),
             _ => Ok(()),
         }
     }
@@ -322,6 +326,10 @@ impl ModelQuery for Equipment {
     type Item = Equipment;
 }
 
+impl ModelQuery for Feature {
+    type Item = Feature;
+}
+
 impl Collection for Model {
     fn collection() -> String {
         String::from("all")
@@ -351,6 +359,7 @@ impl Index for Model {
             Self::Condition(m) => format!("{}:{}", Condition::collection(), m.id()),
             Self::MagicSchool(m) => format!("{}:{}", MagicSchool::collection(), m.id()),
             Self::Equipment(m) => format!("{}:{}", Equipment::collection(), m.id()),
+            Self::Feature(m) => format!("{}:{}", Feature::collection(), m.id()),
             Self::Unknown(m) => String::from(m.get_str("id").unwrap_or("")),
         }
     }
@@ -385,6 +394,7 @@ impl ModelQuery for Model {
         Class::flush_all(c)?;
         MagicSchool::flush_all(c)?;
         Equipment::flush_all(c)?;
+        Feature::flush_all(c)?;
         c.send(IngestRequestMessage::Flushc(&Self::Item::collection()))
     }
 
@@ -443,6 +453,13 @@ impl ModelQuery for Model {
                     .unwrap()
                     .iter()
                     .map(|s| Model::Equipment(s.clone()))
+                    .collect()
+            }),
+            Box::new(|db| {
+                Feature::all(db)
+                    .unwrap()
+                    .iter()
+                    .map(|s| Model::Feature(s.clone()))
                     .collect()
             }),
         ];
@@ -552,6 +569,11 @@ impl ModelQuery for Model {
             Equipment::find(db, query.clone())?
                 .iter()
                 .map(|m| Model::Equipment(m.clone())),
+        );
+        results.extend(
+            Feature::find(db, query.clone())?
+                .iter()
+                .map(|m| Model::Feature(m.clone())),
         );
         Ok(results)
     }
@@ -1273,6 +1295,14 @@ pub struct Equipment {
     document: Document,
 }
 
+#[derive(Debug, Clone)]
+pub struct Feature {
+    id: String,
+    name: String,
+    desc: Vec<String>,
+    document: Document,
+}
+
 impl Collection for MagicSchool {
     fn collection() -> String {
         String::from("magic-schools")
@@ -1412,6 +1442,62 @@ impl ScrollDraw for Equipment {
     }
 }
 
+impl Collection for Feature {
+    fn collection() -> String {
+        String::from("features")
+    }
+}
+
+impl Index for Feature {
+    fn id(&self) -> String {
+        self.id.clone()
+    }
+
+    fn tuples(&self) -> Vec<(String, String, String, String)> {
+        let mut t: Vec<(String, String, String, String)> = Vec::default();
+        t.push((
+            Self::collection(),
+            String::from("name"),
+            self.id(),
+            self.name.clone(),
+        ));
+        for d in &self.desc {
+            t.push((
+                Self::collection(),
+                String::from("desc"),
+                self.id(),
+                d.to_string(),
+            ));
+        }
+        t
+    }
+}
+
+impl ScrollDraw for Feature {
+    fn draw(&self, canvas: &mut dyn Canvas, scroll: usize) -> canvas::Result<()> {
+        let (width, _height) = canvas.size()?;
+        let col = 0;
+        let mut row: i32 = -(i32::try_from(scroll).unwrap());
+        row += print(canvas, row, col, &self.name, Attr::from(Effect::BOLD))?;
+        if let Ok(class) = self.document.get_document("class") {
+            if let Ok(name) = class.get_str("name") {
+                row += print(canvas, row, col, &name, Attr::default())?;
+            }
+        }
+        row += 1;
+
+        for line in &self.desc {
+            for l in break_at(line, width) {
+                let _ = print(canvas, row, col, &l, Attr::default());
+                row += 1;
+            }
+        }
+        row += 1;
+
+        Ok(())
+    }
+}
+
 impl DisplayName for Spell {
     fn display_name(&self) -> (String, Attr) {
         (format!("🔮 {}", self.name), Attr::from(Color::MAGENTA))
@@ -1448,5 +1534,13 @@ impl DisplayName for Equipment {
         )
     }
 }
+impl DisplayName for Feature {
+    fn display_name(&self) -> (String, Attr) {
+        (
+            format!("🧩 {}", self.document.get_str("name").unwrap()),
+            Attr::from(Color::LIGHT_GREEN),
+        )
+    }
+}
 
-impl_From!(for Spell, Monster, Condition, Class, Subclass, Race);
+impl_From!(for Spell, Monster, Condition, Class, Subclass, Race, Feature);

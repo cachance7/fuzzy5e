@@ -5,13 +5,15 @@
 # Requires docker-compose
 ###
 
+idx_file=".indexed-0.1.1"
+
 which docker-compose >/dev/null
 if [[ $? != 0 ]]; then
   echo "docker-compose is required to run this script. Please install and ensure it is in your PATH." >&2
   exit 1
 fi
 
-if [[ -f ".indexed" ]]; then
+if [[ -f "$idx_file" ]]; then
   docker-compose exec fuzzy5e bash -c 'SONIC_ADDR=sonic:1491 MONGO_ADDR=db:27017 fuzzy5e'
 else
   echo "Starting search stack..."
@@ -20,6 +22,6 @@ else
   docker-compose exec fuzzy5e bash -c 'SONIC_ADDR=sonic:1491 MONGO_ADDR=db:27017 fuzzy5e reindex'
   echo "Done!"
   docker-compose restart sonic
-  touch .indexed
+  touch $idx_file
   docker-compose exec fuzzy5e bash -c 'SONIC_ADDR=sonic:1491 MONGO_ADDR=db:27017 fuzzy5e'
 fi
