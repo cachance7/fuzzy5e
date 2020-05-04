@@ -54,6 +54,7 @@ impl Display for Mode {
 
 pub enum RequestMessage<'a> {
     Start(Mode, &'a str),
+    Ping,
     Quit,
 }
 
@@ -64,6 +65,7 @@ impl Display for RequestMessage<'_> {
             "{}",
             match self {
                 Self::Start(mode, pw) => format!("START {} {}", mode, pw),
+                Self::Ping => String::from("PING"),
                 Self::Quit => String::from("QUIT"),
             }
         )
@@ -80,6 +82,7 @@ pub enum ResponseMessage {
     Pending(Pending),
     Event(Event),
     Result,
+    Pong,
     Ok,
     Err,
 }
@@ -174,6 +177,7 @@ impl From<String> for ResponseMessage {
                     raw: s,
                 })
             }
+            "PONG" => ResponseMessage::Pong,
             "RESULT" => ResponseMessage::Result,
             "OK" => ResponseMessage::Ok,
             "ERR" => ResponseMessage::Err,
@@ -217,6 +221,7 @@ pub struct ClientOptions<'a> {
     pub addr: SocketAddr,
     pub password: &'a str,
     pub mode: Mode,
+    pub ping_interval: Duration,
 }
 
 impl Default for ClientOptions<'_> {
@@ -225,6 +230,7 @@ impl Default for ClientOptions<'_> {
             addr: "[::1]:1491".parse().unwrap(),
             password: "SecretPassword",
             mode: Mode::Search,
+            ping_interval: Duration::from_secs(5),
         }
     }
 }
@@ -243,11 +249,20 @@ impl Client {
         let pair = Arc::new((Mutex::new(false), Condvar::new()));
         let pair2 = pair.clone();
 
+        let mut last_ping = std::time::Instant::now();
+
+        let ping_interval = options.ping_interval;
+
         // Communicates with worker
         let event_loop = spawn(move || {
             'event_loop: loop {
                 // Control signals??
                 {}
+                let now = std::time::Instant::now();
+                if now > last_ping + ping_interval {
+                    let _ = worker.write(&format!("{}\r\n", RequestMessage::Ping));
+                    last_ping = now;
+                }
 
                 // Sends all pending messages in queue
                 loop {
@@ -291,6 +306,7 @@ impl Client {
                                 ResponseMessage::Pending(_) => continue,
                                 ResponseMessage::Result => results_tx.send(res),
                                 ResponseMessage::Ok => results_tx.send(res),
+                                ResponseMessage::Pong => continue,
                                 ResponseMessage::Err => {
                                     error!("{}", res);
                                     let _ = results_tx.send(res);
