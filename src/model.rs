@@ -1520,7 +1520,7 @@ impl DisplayName for Condition {
 }
 impl DisplayName for Class {
     fn display_name(&self) -> (String, Attr) {
-        (format!("🗡️  {}", self.name), Attr::from(Color::BLUE))
+        (format!("👤 {}", self.name), Attr::from(Color::BLUE))
     }
 }
 impl DisplayName for Monster {
@@ -1547,7 +1547,7 @@ impl DisplayName for Equipment {
 impl DisplayName for Feature {
     fn display_name(&self) -> (String, Attr) {
         (
-            format!("🧩 {}", self.document.get_str("name").unwrap()),
+            format!("💡 {}", self.document.get_str("name").unwrap()),
             Attr::from(Color::LIGHT_GREEN),
         )
     }
