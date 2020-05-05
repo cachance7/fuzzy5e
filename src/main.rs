@@ -315,9 +315,7 @@ impl Screen5e {
                     .basis(Size::Percent(100))
                     .border(true)
                     .padding_left(1)
-                    .padding_right(1)
-                    .title("Selected")
-                    .title_attr(Attr::from(Color::LIGHT_GREEN));
+                    .padding_right(1);
                 let _ = self.term.draw(&split);
                 let _ = self.term.show_cursor(false);
             }
