@@ -312,17 +312,17 @@ impl Screen5e {
             }
             Layout::Selected => {
                 let title = if let Some(sl) = sel {
-                    sl.display_name().0
+                    sl.display_name()
                 } else {
-                    String::default()
+                    (String::default(), Attr::default())
                 };
                 let split = Win::new(&s)
                     .basis(Size::Percent(100))
                     .border(true)
                     .padding_left(1)
                     .padding_right(1)
-                    .title(&title)
-                    .title_attr(Attr::from(Color::LIGHT_GREEN));
+                    .title(&title.0)
+                    .title_attr(title.1);
                 let _ = self.term.draw(&split);
                 let _ = self.term.show_cursor(false);
             }
