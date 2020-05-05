@@ -460,7 +460,7 @@ dependencies = [
 
 [[package]]
 name = "fuzzy5e"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "bson",
  "derivative",
