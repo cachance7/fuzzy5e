@@ -278,7 +278,7 @@ impl Screen5e {
                 }
             } else {None}
         };
-        let s = Selection(sel, self.scroll);
+        let s = Selection(sel.clone(), self.scroll);
 
         match self.layout {
             Layout::Querying => {
@@ -311,11 +311,18 @@ impl Screen5e {
                 let _ = self.term.show_cursor(true);
             }
             Layout::Selected => {
+                let title = if let Some(sl) = sel {
+                    sl.display_name().0
+                } else {
+                    String::default()
+                };
                 let split = Win::new(&s)
                     .basis(Size::Percent(100))
                     .border(true)
                     .padding_left(1)
-                    .padding_right(1);
+                    .padding_right(1)
+                    .title(&title)
+                    .title_attr(Attr::from(Color::LIGHT_GREEN));
                 let _ = self.term.draw(&split);
                 let _ = self.term.show_cursor(false);
             }
