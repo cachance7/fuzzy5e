@@ -44,7 +44,7 @@ As a DM I find myself constantly looking up spells and monster stat blocks while
 
 NOTE: This is very much a **_work in progress_**.
 
-<img width="1440" alt="Screen Shot 2020-05-05 at 10 59 57 AM" src="https://user-images.githubusercontent.com/1068829/81099633-14ad7b00-8ec0-11ea-96b2-3c5cd085b438.png">
+<img width="1440" alt="Screen Shot 2020-05-05 at 11 29 01 AM" src="https://user-images.githubusercontent.com/1068829/81101928-aec2f280-8ec3-11ea-8138-387630ecd843.png">
 
 _Tiling in tmux turns out to be exactly what I wanted._
 
