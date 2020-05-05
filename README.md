@@ -1,6 +1,5 @@
 [![Contributors][contributors-shield]][contributors-url]
 [![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
 
 
 
@@ -122,8 +121,6 @@ Project Link: [https://github.com/cachance7/fuzzy5e](https://github.com/cachance
 [stars-url]: https://github.com/cachance7/fuzzy5e/stargazers
 [issues-shield]: https://img.shields.io/github/issues/cachance7/fuzzy5e.svg?style=flat-square
 [issues-url]: https://github.com/cachance7/fuzzy5e/issues
-[license-shield]: https://img.shields.io/github/license/cachance7/fuzzy5e.svg?style=flat-square
-[license-url]: https://github.com/cachance7/fuzzy5e/blob/master/LICENSE
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=flat-square&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/casey-chance-9ba0b6a
 [product-screenshot]: images/screenshot.png
