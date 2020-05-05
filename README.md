@@ -116,6 +116,7 @@ Project Link: [https://github.com/cachance7/fuzzy5e](https://github.com/cachance
 ## Acknowledgements
 * [dnd5api](http://dnd5eapi.co/)
 * [Gary Gygax](https://en.wikipedia.org/wiki/Gary_Gygax)
+* Logo built using icons made by Flat Icons from www.flaticon.com
 
 
 <!-- MARKDOWN LINKS & IMAGES -->
