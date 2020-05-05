@@ -20,6 +20,7 @@
 <img src="fuzzy5e.gif" height="400" width="600"/>
 </p>
 
+
 <!-- TABLE OF CONTENTS -->
 ## Table of Contents
 
@@ -39,9 +40,15 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-As a DM I find myself constantly looking up spells and monster stat blocks while running the game. As a programmer, the terminal is my most concise at-a-glance space for text information. After years of struggling to juggle browser windows and tabs, I decided to build this as a sort of quick reference and HUD for my most commonly referenced information.
+As a DM I find myself constantly looking up spells and monster stat blocks while running the game. As a programmer, the terminal is my most concise at-a-glance space for text information. After years of struggling to juggle browser windows and tabs, I decided to build this as a sort of quick reference and HUD for my most commonly referenced information. 
 
 NOTE: This is very much a **_work in progress_**.
+
+<img width="1440" alt="Screen Shot 2020-05-05 at 10 59 57 AM" src="https://user-images.githubusercontent.com/1068829/81099633-14ad7b00-8ec0-11ea-96b2-3c5cd085b438.png">
+
+_Tiling in tmux turns out to be exactly what I wanted._
+
+
 
 ### Built With
 
