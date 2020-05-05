@@ -82,6 +82,7 @@ cd fuzzy5e && ./fuzzy5e
 - Type to begin searching
 - `Ctrl+N` / `Ctrl+P`: select next / previous match
 - `Up` / `Down` / `PgUp` / `PgDown`: scroll the selected content up or down
+- `Enter`: show the selected match full window
 - `Esc`: quit
 
 <!-- CONTRIBUTING -->
