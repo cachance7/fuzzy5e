@@ -76,6 +76,7 @@ enum Action {
     AddChar(char),
     SelectPrevious,
     SelectNext,
+    SetLayout(Layout),
     ScrollUp(usize),
     ScrollDown(usize),
     Resize,
@@ -138,11 +139,10 @@ impl Draw for Input {
         if let Ok(s) = self.0.lock() {
             if s.is_empty() {
                 let _ = canvas.print_with_attr(0, 0, placeholder.0, placeholder.1);
-                let _ = canvas.set_cursor(0, 2 + s.to_string().len());
             } else {
                 let _ = canvas.print_with_attr(0, 0, &format!("? {}", s), Attr::default());
-                let _ = canvas.set_cursor(0, 2 + s.to_string().len());
             }
+            let _ = canvas.set_cursor(0, 2 + s.to_string().len());
         }
         Ok(())
     }
@@ -158,10 +158,12 @@ fn key_to_action(ev: Event) -> Option<Action> {
         | Event::Key(Key::Ctrl('d'))
         | Event::Key(Key::Ctrl('q')) => Some(Action::Quit),
         Event::Key(Key::Backspace) => Some(Action::Backspace),
+        Event::Key(Key::Char('/')) => Some(Action::SetLayout(Layout::Querying)),
         Event::Key(Key::Char(key)) => Some(Action::AddChar(key)),
         Event::Key(Key::Ctrl('w')) => Some(Action::DeleteWord),
         Event::Key(Key::Ctrl('n')) => Some(Action::SelectNext),
         Event::Key(Key::Ctrl('p')) => Some(Action::SelectPrevious),
+        Event::Key(Key::Enter) => Some(Action::SetLayout(Layout::Selected)),
         Event::Key(Key::PageDown) => Some(Action::ScrollDown(10)),
         Event::Key(Key::PageUp) => Some(Action::ScrollUp(10)),
         Event::Key(Key::Down) => Some(Action::ScrollDown(1)),
@@ -170,18 +172,36 @@ fn key_to_action(ev: Event) -> Option<Action> {
     }
 }
 
+/// Layout determines the presentation of the screen.
+#[derive(PartialEq)]
+enum Layout {
+    /// Querying means that the search input pane will be shown as well as the matches
+    Querying,
+    /// Selected means that only the last selected match will be shown (query & matches are hidden)
+    Selected,
+}
+
 struct Screen5e {
     query: Arc<Mutex<Query>>,
     matches: Arc<Mutex<Vec<Model>>>,
     selected: usize,
     scroll: usize,
     term: Arc<Term>,
+    layout: Layout,
 }
 
 enum Scroll {
     Up(usize),
     Down(usize),
 }
+
+/* This doesn't work, so added the "cleanup" method to the impl instead
+impl Drop for Screen5e {
+    fn drop(&mut self) {
+        self.set_layout(Layout::Querying);
+    }
+}
+*/
 
 impl Screen5e {
     fn new(term: Arc<Term>, query: Arc<Mutex<Query>>, matches: Arc<Mutex<Vec<Model>>>) -> Screen5e {
@@ -191,11 +211,21 @@ impl Screen5e {
             selected: 0,
             scroll: 0,
             term,
+            layout: Layout::Querying,
         }
+    }
+
+    fn cleanup(&mut self) {
+        self.set_layout(Layout::Querying);
     }
 
     fn set_selected(&mut self, selected: usize) {
         self.selected = selected;
+        self.update();
+    }
+
+    fn set_layout(&mut self, layout: Layout) {
+        self.layout = layout;
         self.update();
     }
 
@@ -249,32 +279,49 @@ impl Screen5e {
             } else {None}
         };
         let s = Selection(sel, self.scroll);
-        let split = VSplit::default()
-            .split(Win::new(&q).basis(Size::Fixed(1)))
-            .split(
-                HSplit::default()
-                    .basis(Size::Percent(30))
+
+        match self.layout {
+            Layout::Querying => {
+                let split = VSplit::default()
+                    .split(Win::new(&q).basis(Size::Fixed(1)))
                     .split(
-                        Win::new(&m)
-                            .border(true)
+                        HSplit::default()
                             .basis(Size::Percent(30))
-                            .margin_top(1)
-                            .title("Results")
-                            .title_attr(Attr::from(Color::LIGHT_GREEN)),
-                    )
-                    .split(
-                        Win::new(&s)
-                            .border(true)
-                            .basis(Size::Percent(70))
-                            .margin_top(1)
-                            .padding_left(1)
-                            .padding_right(1)
-                            .title("Selected")
-                            .title_attr(Attr::from(Color::LIGHT_GREEN)),
-                    )
-                    .basis(Size::Percent(100)),
-            );
-        let _ = self.term.draw(&split);
+                            .split(
+                                Win::new(&m)
+                                    .border(true)
+                                    .basis(Size::Percent(30))
+                                    .margin_top(1)
+                                    .title("Results")
+                                    .title_attr(Attr::from(Color::LIGHT_GREEN)),
+                            )
+                            .split(
+                                Win::new(&s)
+                                    .border(true)
+                                    .basis(Size::Percent(70))
+                                    .margin_top(1)
+                                    .padding_left(1)
+                                    .padding_right(1)
+                                    .title("Selected")
+                                    .title_attr(Attr::from(Color::LIGHT_GREEN)),
+                            )
+                            .basis(Size::Percent(100)),
+                    );
+                let _ = self.term.draw(&split);
+                let _ = self.term.show_cursor(true);
+            }
+            Layout::Selected => {
+                let split = Win::new(&s)
+                    .basis(Size::Percent(100))
+                    .border(true)
+                    .padding_left(1)
+                    .padding_right(1)
+                    .title("Selected")
+                    .title_attr(Attr::from(Color::LIGHT_GREEN));
+                let _ = self.term.draw(&split);
+                let _ = self.term.show_cursor(false);
+            }
+        }
         let _ = self.term.present();
         info!("done screen.update()");
     }
@@ -347,7 +394,7 @@ fn do_run(config: Config) -> std::result::Result<(), Box<dyn Error>> {
     let q2 = Arc::clone(&query);
 
     let matches = Arc::new(Mutex::new(Vec::new()));
-    let m2 = Arc::clone(&matches);
+    // let m2 = Arc::clone(&matches);
 
     // Term is thread-safe
     let term = Arc::new(Term::new().unwrap());
@@ -394,9 +441,21 @@ fn do_run(config: Config) -> std::result::Result<(), Box<dyn Error>> {
             debug!("loop got action");
             if let Some(a) = action {
                 match a {
-                    Action::Quit => break,
+                    Action::Quit => {
+                        if let Ok(mut screen) = screen.lock() {
+                            if screen.layout == Layout::Selected {
+                                screen.set_layout(Layout::Querying);
+                            } else {
+                                screen.cleanup();
+                                break;
+                            }
+                        }
+                    }
                     Action::Backspace => {
                         if let Ok(mut screen) = screen.lock() {
+                            if screen.layout == Layout::Selected {
+                                continue;
+                            }
                             q2.lock().unwrap().backspace();
                             screen.set_selected(0);
                         }
@@ -404,12 +463,18 @@ fn do_run(config: Config) -> std::result::Result<(), Box<dyn Error>> {
                     }
                     Action::DeleteWord => {
                         if let Ok(screen) = screen.lock() {
+                            if screen.layout == Layout::Selected {
+                                continue;
+                            }
                             q2.lock().unwrap().delete_word();
                             screen.update();
                         }
                     }
                     Action::AddChar(key) => {
                         if let Ok(mut screen) = screen.lock() {
+                            if screen.layout == Layout::Selected {
+                                continue;
+                            }
                             q2.lock().unwrap().push(key);
                             screen.set_selected(0);
                         }
@@ -427,16 +492,27 @@ fn do_run(config: Config) -> std::result::Result<(), Box<dyn Error>> {
                     }
                     Action::SelectNext => {
                         if let Ok(mut screen) = screen.lock() {
+                            if screen.layout == Layout::Selected {
+                                continue;
+                            }
                             screen.select_next();
                         }
                     }
                     Action::SelectPrevious => {
                         if let Ok(mut screen) = screen.lock() {
+                            if screen.layout == Layout::Selected {
+                                continue;
+                            }
                             screen.select_prev();
                         }
                     }
-                    Action::Resize => {
+                    Action::SetLayout(l) => {
                         if let Ok(mut screen) = screen.lock() {
+                            screen.set_layout(l);
+                        }
+                    }
+                    Action::Resize => {
+                        if let Ok(screen) = screen.lock() {
                             screen.update();
                         }
                     }
