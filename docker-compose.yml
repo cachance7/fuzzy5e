@@ -11,7 +11,7 @@ services:
     ports:
       - "27017:27017"
   fuzzy5e:
-    image: cjchance/fuzzy5e:0.1.3
+    image: cjchance/fuzzy5e:0.1.4
     stdin_open: true
     tty: true
     entrypoint: /bin/sh

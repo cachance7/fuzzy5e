@@ -81,6 +81,8 @@ impl Model {
             Model::Monster(m) => m.draw(canvas, scroll),
             Model::Equipment(m) => m.draw(canvas, scroll),
             Model::Feature(m) => m.draw(canvas, scroll),
+            Model::Condition(m) => m.draw(canvas, scroll),
+            // Model::Class(m) => m.draw(canvas, scroll),
             _ => Ok(()),
         }
     }
@@ -1508,6 +1510,25 @@ impl ScrollDraw for Feature {
     }
 }
 
+impl ScrollDraw for Condition {
+    fn draw(&self, canvas: &mut dyn Canvas, scroll: usize) -> canvas::Result<()> {
+        let (width, _height) = canvas.size()?;
+        let col = 0;
+        let mut row: i32 = -(i32::try_from(scroll).unwrap());
+        row += print(canvas, row, col, &self.name, Attr::from(Effect::BOLD))?;
+
+        for line in &self.desc {
+            for l in break_at(line, width) {
+                let _ = print(canvas, row, col, &l, Attr::default());
+                row += 1;
+            }
+        }
+        row += 1;
+
+        Ok(())
+    }
+}
+
 impl DisplayName for Spell {
     fn display_name(&self) -> (String, Attr) {
         (format!("🔮 {}", self.name), Attr::from(Color::MAGENTA))
@@ -1515,7 +1536,7 @@ impl DisplayName for Spell {
 }
 impl DisplayName for Condition {
     fn display_name(&self) -> (String, Attr) {
-        (format!("🩹 {}", self.name), Attr::default())
+        (format!("💢 {}", self.name), Attr::default())
     }
 }
 impl DisplayName for Class {
