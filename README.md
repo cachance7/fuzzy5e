@@ -44,7 +44,7 @@ As a DM I find myself constantly looking up spells and monster stat blocks while
 
 NOTE: This is very much a **_work in progress_**.
 
-<img width="1440" alt="Screen Shot 2020-05-05 at 10 59 57 AM" src="https://user-images.githubusercontent.com/1068829/81099633-14ad7b00-8ec0-11ea-96b2-3c5cd085b438.png">
+<img width="1440" alt="Screen Shot 2020-05-05 at 11 29 01 AM" src="https://user-images.githubusercontent.com/1068829/81101928-aec2f280-8ec3-11ea-8138-387630ecd843.png">
 
 _Tiling in tmux turns out to be exactly what I wanted._
 
@@ -54,7 +54,7 @@ _Tiling in tmux turns out to be exactly what I wanted._
 
 * [Rust](https://www.rust-lang.org/) - this app is written in rust
 * [tuikit](https://github.com/lotabout/tuikit) - leaned on this heavily for the terminal UI presentation
-* [5e-database](https://github.com/bagelbits/5e-database) - information is sourced from here
+* [5e-database](https://github.com/bagelbits/5e-database) - SRD data is sourced from here
 * [Sonic](https://github.com/valeriansaliou/sonic) - used to index the information for quick on-the-fly lookup
 * [Docker](https://www.docker.com/) - for running the dependent services and redistributing
 
@@ -116,6 +116,7 @@ Project Link: [https://github.com/cachance7/fuzzy5e](https://github.com/cachance
 ## Acknowledgements
 * [dnd5api](http://dnd5eapi.co/)
 * [Gary Gygax](https://en.wikipedia.org/wiki/Gary_Gygax)
+* Logo built using icons made by Flat Icons from www.flaticon.com
 
 
 <!-- MARKDOWN LINKS & IMAGES -->
