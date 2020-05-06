@@ -10,11 +10,11 @@ services:
     image: fuzzylombax/5e-srd-database
     ports:
       - "27017:27017"
-  fuzzy5e:
-    image: cjchance/fuzzy5e:0.1.5
-    stdin_open: true
-    tty: true
-    entrypoint: /bin/sh
-    depends_on:
-      - sonic
-      - db
+  # fuzzy5e:
+  #   image: cjchance/fuzzy5e:0.1.5
+  #   stdin_open: true
+  #   tty: true
+  #   entrypoint: /bin/sh
+  #   depends_on:
+  #     - sonic
+  #     - db

@@ -41,4 +41,5 @@ version=$(index_version)
 if [[ $version < $idx_version ]]; then
   reindex
 fi
-docker-compose exec fuzzy5e bash -c 'SONIC_ADDR=sonic:1491 MONGO_ADDR=db:27017 fuzzy5e'
+
+winpty docker run --net fuzzy5e_default -it --entrypoint=fuzzy5e cjchance/fuzzy5e:0.1.5 --sonic-addr=sonic:1491 --mongo-addr=db:27017
