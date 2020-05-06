@@ -525,7 +525,7 @@ impl ModelQuery for Model {
             }
         }
 
-        let ids: Vec<(&str, &str)> = ids
+        let sids: Vec<(&str, &str)> = ids
             .iter()
             .map(|r: &String| -> (&str, &str) {
                 let s: Vec<&str> = r.split(':').collect();
@@ -534,14 +534,16 @@ impl ModelQuery for Model {
             .collect();
 
         //FIXME This is a very stupid implementation
-        let oids: Vec<ObjectId> = ids
+        let oids: Vec<ObjectId> = sids
             .iter()
             .map(|(_, sid)| bson::oid::ObjectId::with_string(sid).unwrap())
             .collect();
 
         let query: Document = doc! {"_id": {"$in": oids}};
 
+        let mut mresults = std::collections::HashMap::new();
         let mut results: Vec<Model> = Vec::default();
+
         results.extend(
             Spell::find(db, query.clone())?
                 .iter()
@@ -577,7 +579,19 @@ impl ModelQuery for Model {
                 .iter()
                 .map(|m| Model::Feature(m.clone())),
         );
-        Ok(results)
+
+        for r in results {
+            mresults.insert(r.id(), r);
+        }
+
+        let mut ordered_results = Vec::new();
+        for id in ids {
+            if let Some(r) = mresults.get(&id) {
+                ordered_results.push(r.clone());
+            }
+        }
+
+        Ok(ordered_results)
     }
 }
 
