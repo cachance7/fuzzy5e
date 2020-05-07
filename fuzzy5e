@@ -5,14 +5,32 @@
 # Requires docker-compose
 ###
 
+COMPOSE_PROJECT_NAME=fuzzy5e
+
+net=${COMPOSE_PROJECT_NAME}_default
+version="$(cat Cargo.toml| sed -n '/version/p' | sed 's/version.*=.*"\(.*\)"/\1/g')"
 idx_version="0.1.1"
 idx_file="$HOME/.fuzzy5e-index"
+docker_cmd="docker"
+
+# Check for special windows handling
+which winpty >/dev/null
+if [[ $? == 0 ]]; then
+  # If we detect winpty, use it
+  docker_cmd="winpty docker"
+fi
 
 function reindex() {
   echo "Updating index — this will take a minute..."
-  docker-compose exec fuzzy5e bash -c 'SONIC_ADDR=sonic:1491 MONGO_ADDR=db:27017 fuzzy5e reindex'
+  $docker_cmd run \
+    --rm \
+    --net ${net} \
+    --entrypoint=fuzzy5e \
+    cjchance/fuzzy5e:${version} --sonic-addr=sonic:1491 --mongo-addr=db:27017 reindex
+
   if [[ $? != 0 ]]; then
     echo "Indexing did not complete successfully." >&2
+    exit 1
   else
     echo $idx_version > $idx_file
     echo "Done!" >&2
@@ -37,8 +55,14 @@ fi
 echo "Starting search stack..."
 docker-compose up -d
 
-version=$(index_version)
-if [[ $version < $idx_version ]]; then
+found_idx_version=$(index_version)
+if [[ $found_idx_version < $idx_version ]]; then
   reindex
 fi
-docker-compose exec fuzzy5e bash -c 'SONIC_ADDR=sonic:1491 MONGO_ADDR=db:27017 fuzzy5e'
+
+$docker_cmd run \
+  -it \
+  --rm \
+  --net ${net} \
+  --entrypoint=fuzzy5e \
+  cjchance/fuzzy5e:${version} --sonic-addr=sonic:1491 --mongo-addr=db:27017
