@@ -103,6 +103,7 @@ If you'd like to contribute, feel free to open up a PR and let's make it work!
 
 Distributed under the MIT License. See `LICENSE` for more information.
 
+All searchable content is derived from SRD5 and is used courtesy of the [OGL-1.0a](https://github.com/cachance7/fuzzy5e/blob/master/OGL-1.0a.txt)
 
 
 <!-- CONTACT -->
