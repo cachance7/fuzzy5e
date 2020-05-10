@@ -12,7 +12,7 @@
   <h3 align="center">Fuzzy5e</h3>
 
   <p align="center">
-    A D&D 5th edition reference for your terminal.
+    A 5th edition SRD5 reference for your terminal.
   </p>
 </p>
 
@@ -54,7 +54,7 @@ _Tiling in tmux turns out to be exactly what I wanted._
 
 * [Rust](https://www.rust-lang.org/) - this app is written in rust
 * [tuikit](https://github.com/lotabout/tuikit) - leaned on this heavily for the terminal UI presentation
-* [5e-database](https://github.com/bagelbits/5e-database) - SRD data is sourced from here
+* [5e-database](https://github.com/bagelbits/5e-database) - SRD5 data is sourced from here
 * [Sonic](https://github.com/valeriansaliou/sonic) - used to index the information for quick on-the-fly lookup
 * [Docker](https://www.docker.com/) - for running the dependent services and redistributing
 
