@@ -6,7 +6,7 @@
 <br />
 <p align="center">
   <a href="https://github.com/cachance7/fuzzy5e">
-    <img src="logo.png" alt="Logo" width="80" height="80">
+    <img src="logo.png" alt="Logo" width="160">
   </a>
 
   <h3 align="center">Fuzzy5e</h3>
