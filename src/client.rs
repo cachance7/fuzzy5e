@@ -462,7 +462,11 @@ impl Indexer for Client {
         Ok(())
     }
 
-    fn query(&self, col: &str, query: &str) -> Result<Vec<String>, IndexError> {
+    fn query(&self, col: &str, query: &str) -> Result<Vec<(String, Vec<u8>)>, IndexError> {
+        unimplemented!("not implemented for sonic client");
+    }
+
+    fn query_ids(&self, col: &str, query: &str) -> Result<Vec<String>, IndexError> {
         trace!("querying sonic");
         let mut ids = Vec::new();
         let res = self.send(SearchRequestMessage::Query(

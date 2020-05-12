@@ -368,9 +368,8 @@ fn do_reindex(config: Config) -> std::result::Result<(), Box<dyn Error>> {
     trace!("do_query");
     let db = DB::connect(&config.mongo_addr).expect("failed to connect to mongodb");
 
-    let idx = Tantivy::new(TantivyOptions::default());
+    let idx = Tantivy::new(TantivyOptions{rebuild: true, ..TantivyOptions::default()});
 
-    Model::flush_all(idx.clone())?;
     Model::index_all(idx.clone(), &db)?;
 
     Ok(())

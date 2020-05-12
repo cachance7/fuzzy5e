@@ -22,6 +22,7 @@ envconfig = "*"
 envconfig_derive = "*"
 tantivy = "0.12.0"
 futures = {version = "0.3.5",  features=["thread-pool"] }
+hex = "*"
 
 
 [profile.dev]

@@ -23,6 +23,7 @@ pub enum Model {
     MagicSchool(MagicSchool),
     Equipment(Equipment),
     Feature(Feature),
+    Subclass(Subclass),
 }
 
 quick_error! {
@@ -39,6 +40,7 @@ impl Model {
         match self {
             Self::Spell(m) => Ok(Box::new(m.clone())),
             Self::Class(m) => Ok(Box::new(m.clone())),
+            Self::Subclass(m) => Ok(Box::new(m.clone())),
             Self::Monster(m) => Ok(Box::new(m.clone())),
             Self::Condition(m) => Ok(Box::new(m.clone())),
             Self::MagicSchool(m) => Ok(Box::new(m.clone())),
@@ -63,6 +65,7 @@ impl DisplayName for Model {
             Self::MagicSchool(m) => m.display_name(),
             Self::Equipment(m) => m.display_name(),
             Self::Feature(m) => m.display_name(),
+            Self::Subclass(m) => m.display_name(),
             Self::Unknown(m) => (
                 String::from(m.get_str("name").unwrap_or("")),
                 Attr::default(),
@@ -142,10 +145,10 @@ pub trait ModelQuery {
         s.index_bulk(Self::all(db).unwrap())
     }
 
+    /// Performs a query in the index and returns Items. Default implementation looks up ids in the
+    /// index and then queries a database for those ids.
     fn indexed_query(s: impl Indexer, db: &DB, qs: &str) -> Result<Vec<Box<Self::Item>>> {
-        let ids = s.query(&Self::Item::collection(), qs)?;
-
-        // heymywife is the best wife she's so hot and fun and smart and loevly and I'm the best too for making her drinks}
+        let ids = s.query_ids(&Self::Item::collection(), qs)?;
 
         let oids: Vec<ObjectId> = ids
             .iter()
@@ -167,6 +170,9 @@ impl Collection for Spell {
 impl Index for Spell {
     fn id(&self) -> String {
         self.id.clone()
+    }
+    fn mtype(&self) -> String {
+        "spell".into()
     }
 
     fn tuples(&self) -> Vec<(String, String, String, String)> {
@@ -199,6 +205,9 @@ impl Index for Monster {
     fn id(&self) -> String {
         self.id.clone()
     }
+    fn mtype(&self) -> String {
+        "monster".into()
+    }
 
     fn tuples(&self) -> Vec<(String, String, String, String)> {
         let mut t: Vec<(String, String, String, String)> = Vec::default();
@@ -228,6 +237,9 @@ impl Index for Class {
     fn id(&self) -> String {
         self.id.clone()
     }
+    fn mtype(&self) -> String {
+        "class".into()
+    }
 
     fn tuples(&self) -> Vec<(String, String, String, String)> {
         let mut t: Vec<(String, String, String, String)> = Vec::default();
@@ -250,6 +262,9 @@ impl Collection for Condition {
 impl Index for Condition {
     fn id(&self) -> String {
         self.id.clone()
+    }
+    fn mtype(&self) -> String {
+        "condition".into()
     }
 
     fn tuples(&self) -> Vec<(String, String, String, String)> {
@@ -286,6 +301,10 @@ impl ModelQuery for Monster {
 
 impl ModelQuery for Class {
     type Item = Class;
+}
+
+impl ModelQuery for Subclass {
+    type Item = Subclass;
 }
 
 impl ModelQuery for MagicSchool {
@@ -326,11 +345,26 @@ impl Index for Model {
             Self::Spell(m) => format!("{}:{}", Spell::collection(), m.id()),
             Self::Monster(m) => format!("{}:{}", Monster::collection(), m.id()),
             Self::Class(m) => format!("{}:{}", Class::collection(), m.id()),
+            Self::Subclass(m) => format!("{}:{}", Subclass::collection(), m.id()),
             Self::Condition(m) => format!("{}:{}", Condition::collection(), m.id()),
             Self::MagicSchool(m) => format!("{}:{}", MagicSchool::collection(), m.id()),
             Self::Equipment(m) => format!("{}:{}", Equipment::collection(), m.id()),
             Self::Feature(m) => format!("{}:{}", Feature::collection(), m.id()),
             Self::Unknown(m) => String::from(m.get_str("id").unwrap_or("")),
+        }
+    }
+
+    fn mtype(&self) -> String {
+        match self {
+            Self::Spell(m) => m.mtype(),
+            Self::Monster(m) => m.mtype(),
+            Self::Class(m) => m.mtype(),
+            Self::Subclass(m) => m.mtype(),
+            Self::Condition(m) => m.mtype(),
+            Self::MagicSchool(m) => m.mtype(),
+            Self::Equipment(m) => m.mtype(),
+            Self::Feature(m) => m.mtype(),
+            Self::Unknown(_) => "unknown".into(),
         }
     }
 
@@ -350,6 +384,7 @@ impl ToBytes for Model {
             Self::Spell(m) => m.to_bytes(),
             Self::Monster(m) => m.to_bytes(),
             Self::Class(m) => m.to_bytes(),
+            Self::Subclass(m) => m.to_bytes(),
             Self::Condition(m) => m.to_bytes(),
             Self::MagicSchool(m) => m.to_bytes(),
             Self::Equipment(m) => m.to_bytes(),
@@ -381,6 +416,7 @@ impl ModelQuery for Model {
         Monster::flush_all(c.clone())?;
         Condition::flush_all(c.clone())?;
         Class::flush_all(c.clone())?;
+        Subclass::flush_all(c.clone())?;
         MagicSchool::flush_all(c.clone())?;
         Equipment::flush_all(c.clone())?;
         Feature::flush_all(c.clone())?;
@@ -454,95 +490,111 @@ impl ModelQuery for Model {
         ];
         for f in fns {
             s.index_bulk(f(database));
-            // for model in f(database) {
-            //     // Indexes into the global collection
-            //     s.index(Box::new(model));
-            //     match model {
-            //         Self::Spell(m) => Ok(Box::new(&m.clone())),
-            //         Self::Class(m) => Ok(Box::new(&m.clone())),
-            //         Self::Monster(m) => Ok(Box::new(&m.clone())),
-            //         Self::Condition(m) => Ok(Box::new(&m.clone())),
-            //         Self::MagicSchool(m) => Ok(Box::new(&m.clone())),
-            //         Self::Equipment(m) => Ok(Box::new(&m.clone())),
-            //         Self::Feature(m) => Ok(Box::new(&m.clone())),
-            //         _ => Err(Box::new(ModelError::NoInnerIndex("Model"))),
-            //     }
-            // }
         }
         Ok(())
     }
 
     /// Implementation for Model enum. This performs a query across all types.
     fn indexed_query(s: impl Indexer, db: &DB, qs: &str) -> Result<Vec<Box<Self::Item>>> {
-        let ids = s.query(&Self::Item::collection(), qs)?;
+        trace!("indexed query");
+        let docs = s.query(&Self::Item::collection(), qs)?;
+        debug!("got {} docs", docs.len());
+        let mut results: Vec<Box<Model>> = Vec::new();
 
-        let sids: Vec<(&str, &str)> = ids
-            .iter()
-            .map(|r: &String| -> (&str, &str) {
-                let s: Vec<&str> = r.split(':').collect();
-                (s.get(0).unwrap(), s.get(1).unwrap())
-            })
-            .collect();
-
-        //FIXME This is a very stupid implementation
-        let oids: Vec<ObjectId> = sids
-            .iter()
-            .map(|(_, sid)| bson::oid::ObjectId::with_string(sid).unwrap())
-            .collect();
-
-        let query: Document = doc! {"_id": {"$in": oids}};
-
-        let mut mresults = std::collections::HashMap::new();
-        let mut results: Vec<Model> = Vec::default();
-
-        results.extend(
-            Spell::find(db, query.clone())?
-                .iter()
-                .map(|m| Model::Spell(*m.clone())),
-        );
-        results.extend(
-            Monster::find(db, query.clone())?
-                .iter()
-                .map(|m| Model::Monster(*m.clone())),
-        );
-        results.extend(
-            Class::find(db, query.clone())?
-                .iter()
-                .map(|m| Model::Class(*m.clone())),
-        );
-        results.extend(
-            Condition::find(db, query.clone())?
-                .iter()
-                .map(|m| Model::Condition(*m.clone())),
-        );
-        results.extend(
-            MagicSchool::find(db, query.clone())?
-                .iter()
-                .map(|m| Model::MagicSchool(*m.clone())),
-        );
-        results.extend(
-            Equipment::find(db, query.clone())?
-                .iter()
-                .map(|m| Model::Equipment(*m.clone())),
-        );
-        results.extend(
-            Feature::find(db, query.clone())?
-                .iter()
-                .map(|m| Model::Feature(*m.clone())),
-        );
-
-        for r in results {
-            mresults.insert(r.id(), r);
-        }
-
-        let mut ordered_results = Vec::new();
-        for id in ids {
-            if let Some(r) = mresults.get(&id) {
-                ordered_results.push(Box::new(r.clone()));
+        for (t, doc) in docs {
+            let mut c = std::io::Cursor::new(doc);
+            match bson::decode_document(&mut c) {
+                Ok(d) => {
+                    let m = match t.as_str() {
+                        "spell" => Model::Spell(Spell::from(d.clone())),
+                        "feature" => Model::Feature(Feature::from(d.clone())),
+                        "equipment" => Model::Equipment(Equipment::from(d.clone())),
+                        "monster" => Model::Monster(Monster::from(d.clone())),
+                        "class" => Model::Class(Class::from(d.clone())),
+                        "subclass" => Model::Subclass(Subclass::from(d.clone())),
+                        "magic_school" => Model::MagicSchool(MagicSchool::from(d.clone())),
+                        // "race" => Model::Race(Race::from(d.clone())),
+                        "condition" => Model::Condition(Condition::from(d.clone())),
+                        _ => unimplemented!("dont know how to do this one")
+                    };
+                    debug!("model: {}", d);
+                    results.push(Box::new(m));
+                },
+                Err(e) => {
+                    error!("failed to decode doc: {}", e);
+                }
             }
         }
 
-        Ok(ordered_results)
+        // BEGIN old implementation
+        // let sids: Vec<(&str, &str)> = ids
+        //     .iter()
+        //     .map(|r: &String| -> (&str, &str) {
+        //         let s: Vec<&str> = r.split(':').collect();
+        //         (s.get(0).unwrap(), s.get(1).unwrap())
+        //     })
+        //     .collect();
+
+        //FIXME This is a very stupid implementation
+        // let oids: Vec<ObjectId> = sids
+        //     .iter()
+        //     .map(|(_, sid)| bson::oid::ObjectId::with_string(sid).unwrap())
+        //     .collect();
+        //
+        // let query: Document = doc! {"_id": {"$in": oids}};
+        //
+        // let mut mresults = std::collections::HashMap::new();
+        // let mut results: Vec<Model> = Vec::default();
+        //
+        // results.extend(
+        //     Spell::find(db, query.clone())?
+        //         .iter()
+        //         .map(|m| Model::Spell(*m.clone())),
+        // );
+        // results.extend(
+        //     Monster::find(db, query.clone())?
+        //         .iter()
+        //         .map(|m| Model::Monster(*m.clone())),
+        // );
+        // results.extend(
+        //     Class::find(db, query.clone())?
+        //         .iter()
+        //         .map(|m| Model::Class(*m.clone())),
+        // );
+        // results.extend(
+        //     Condition::find(db, query.clone())?
+        //         .iter()
+        //         .map(|m| Model::Condition(*m.clone())),
+        // );
+        // results.extend(
+        //     MagicSchool::find(db, query.clone())?
+        //         .iter()
+        //         .map(|m| Model::MagicSchool(*m.clone())),
+        // );
+        // results.extend(
+        //     Equipment::find(db, query.clone())?
+        //         .iter()
+        //         .map(|m| Model::Equipment(*m.clone())),
+        // );
+        // results.extend(
+        //     Feature::find(db, query.clone())?
+        //         .iter()
+        //         .map(|m| Model::Feature(*m.clone())),
+        // );
+        //
+        // for r in results {
+        //     mresults.insert(r.id(), r);
+        // }
+        //
+        // let mut ordered_results = Vec::new();
+        // for id in ids {
+        //     if let Some(r) = mresults.get(&id) {
+        //         ordered_results.push(Box::new(r.clone()));
+        //     }
+        // }
+        // END old implementation
+
+        Ok(results)
     }
 }
 
@@ -1294,6 +1346,10 @@ impl Index for MagicSchool {
         self.id.clone()
     }
 
+    fn mtype(&self) -> String {
+        "magic_school".into()
+    }
+
     fn tuples(&self) -> Vec<(String, String, String, String)> {
         let mut t: Vec<(String, String, String, String)> = Vec::default();
         t.push((
@@ -1339,6 +1395,42 @@ impl ScrollDraw for MagicSchool {
     }
 }
 
+impl Collection for Subclass {
+    fn collection() -> String {
+        String::from("subclass")
+    }
+}
+
+impl Index for Subclass {
+    fn id(&self) -> String {
+        self.id.clone()
+    }
+    fn mtype(&self) -> String {
+        "subclass".into()
+    }
+
+    fn tuples(&self) -> Vec<(String, String, String, String)> {
+        let mut t: Vec<(String, String, String, String)> = Vec::default();
+        t.push((
+            Self::collection(),
+            String::from("name"),
+            self.id(),
+            self.name.clone(),
+        ));
+        if let Ok(properties) = self.document.get_array("properties") {
+            for p in properties {
+                t.push((
+                    Self::collection(),
+                    String::from("desc"),
+                    self.id(),
+                    String::from(p.as_document().unwrap().get_str("name").unwrap()),
+                ));
+            }
+        }
+        t
+    }
+}
+
 impl From<Document> for Equipment {
     fn from(d: Document) -> Self {
         Self {
@@ -1358,6 +1450,9 @@ impl Collection for Equipment {
 impl Index for Equipment {
     fn id(&self) -> String {
         self.id.clone()
+    }
+    fn mtype(&self) -> String {
+        "equipment".into()
     }
 
     fn tuples(&self) -> Vec<(String, String, String, String)> {
@@ -1431,6 +1526,9 @@ impl Collection for Feature {
 impl Index for Feature {
     fn id(&self) -> String {
         self.id.clone()
+    }
+    fn mtype(&self) -> String {
+        "feature".into()
     }
 
     fn tuples(&self) -> Vec<(String, String, String, String)> {
@@ -1547,6 +1645,14 @@ impl DisplayName for Feature {
     fn display_name(&self) -> (String, Attr) {
         (
             format!("💡 {}", self.document.get_str("name").unwrap()),
+            Attr::from(Color::LIGHT_GREEN),
+        )
+    }
+}
+impl DisplayName for Subclass {
+    fn display_name(&self) -> (String, Attr) {
+        (
+            format!("👤 {}", self.document.get_str("name").unwrap()),
             Attr::from(Color::LIGHT_GREEN),
         )
     }

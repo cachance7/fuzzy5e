@@ -717,6 +717,7 @@ dependencies = [
  "envconfig",
  "envconfig_derive",
  "futures",
+ "hex 0.3.2",
  "log",
  "mongodb",
  "ordinal",
