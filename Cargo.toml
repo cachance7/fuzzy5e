@@ -1,6 +1,6 @@
 [package]
 name = "fuzzy5e"
-version = "0.1.6"
+version = "0.2.0"
 authors = ["Casey Chance <casey@chance.email>"]
 edition = "2018"
 

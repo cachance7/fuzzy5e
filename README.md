@@ -40,7 +40,7 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-As a DM I find myself constantly looking up spells and monster stat blocks while running the game. As a programmer, the terminal is my most concise at-a-glance space for text information. After years of struggling to juggle browser windows and tabs, I decided to build this as a sort of quick reference and HUD for my most commonly referenced information. 
+As a DM I find myself constantly looking up spells and monster stat blocks while running the game. As a programmer, the terminal is my most concise at-a-glance space for text information. After years of struggling to juggle browser windows and tabs, I decided to build this as a sort of quick reference and HUD for my most commonly referenced information.
 
 NOTE: This is very much a **_work in progress_**.
 
@@ -55,19 +55,16 @@ _Tiling in tmux turns out to be exactly what I wanted._
 * [Rust](https://www.rust-lang.org/) - this app is written in rust
 * [tuikit](https://github.com/lotabout/tuikit) - leaned on this heavily for the terminal UI presentation
 * [5e-database](https://github.com/bagelbits/5e-database) - SRD5 data is sourced from here
-* [Sonic](https://github.com/valeriansaliou/sonic) - used to index the information for quick on-the-fly lookup
-* [Docker](https://www.docker.com/) - for running the dependent services and redistributing
 
 
 <!-- GETTING STARTED -->
 ## Getting Started
 
-fuzzy5e is a terminal UI written in Rust, but it relies on several external services to function. The easiest way to get up and running is to use Docker and docker-compose.
+fuzzy5e is a terminal UI written in Rust. It has been tested on Mac OSX Catalina and Linux. YMMV on Windows.
 
 ### Prerequisites
 
-- [Install Docker & docker-compose](https://docs.docker.com/get-docker/)
-
+[Rust >=1.40](https://www.rust-lang.org/tools/install) (if building from source)
 
 ### Installation
 
@@ -75,9 +72,9 @@ fuzzy5e is a terminal UI written in Rust, but it relies on several external serv
 ```sh
 git clone https://github.com/cachance7/fuzzy5e
 ```
-2. Run the helper script. After pulling and building the containers there is a one-time indexing that will occur.
+2. Build and run the executable
 ```sh
-cd fuzzy5e && ./fuzzy5e
+cd fuzzy5e && cargo run
 ```
 3. Enjoy!
 

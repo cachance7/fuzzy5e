@@ -147,17 +147,18 @@ pub trait ModelQuery {
 
     /// Performs a query in the index and returns Items. Default implementation looks up ids in the
     /// index and then queries a database for those ids.
-    fn indexed_query(s: impl Indexer, db: &DB, qs: &str) -> Result<Vec<Box<Self::Item>>> {
-        let ids = s.query_ids(&Self::Item::collection(), qs)?;
-
-        let oids: Vec<ObjectId> = ids
-            .iter()
-            .map(|sid| bson::oid::ObjectId::with_string(sid).unwrap())
-            .collect();
-
-        let query: Document = doc! {"_id": {"$in": oids}};
-
-        Self::find(db, query)
+    fn indexed_query(s: impl Indexer, qs: &str) -> Result<Vec<Box<Self::Item>>> {
+        unimplemented!("TODO: implement the single model query");
+        // let ids = s.query_ids(&Self::Item::collection(), qs)?;
+        //
+        // let oids: Vec<ObjectId> = ids
+        //     .iter()
+        //     .map(|sid| bson::oid::ObjectId::with_string(sid).unwrap())
+        //     .collect();
+        //
+        // let query: Document = doc! {"_id": {"$in": oids}};
+        //
+        // Self::find(db, query)
     }
 }
 
@@ -495,7 +496,7 @@ impl ModelQuery for Model {
     }
 
     /// Implementation for Model enum. This performs a query across all types.
-    fn indexed_query(s: impl Indexer, db: &DB, qs: &str) -> Result<Vec<Box<Self::Item>>> {
+    fn indexed_query(s: impl Indexer, qs: &str) -> Result<Vec<Box<Self::Item>>> {
         trace!("indexed query");
         let docs = s.query(&Self::Item::collection(), qs)?;
         debug!("got {} docs", docs.len());
@@ -525,74 +526,6 @@ impl ModelQuery for Model {
                 }
             }
         }
-
-        // BEGIN old implementation
-        // let sids: Vec<(&str, &str)> = ids
-        //     .iter()
-        //     .map(|r: &String| -> (&str, &str) {
-        //         let s: Vec<&str> = r.split(':').collect();
-        //         (s.get(0).unwrap(), s.get(1).unwrap())
-        //     })
-        //     .collect();
-
-        //FIXME This is a very stupid implementation
-        // let oids: Vec<ObjectId> = sids
-        //     .iter()
-        //     .map(|(_, sid)| bson::oid::ObjectId::with_string(sid).unwrap())
-        //     .collect();
-        //
-        // let query: Document = doc! {"_id": {"$in": oids}};
-        //
-        // let mut mresults = std::collections::HashMap::new();
-        // let mut results: Vec<Model> = Vec::default();
-        //
-        // results.extend(
-        //     Spell::find(db, query.clone())?
-        //         .iter()
-        //         .map(|m| Model::Spell(*m.clone())),
-        // );
-        // results.extend(
-        //     Monster::find(db, query.clone())?
-        //         .iter()
-        //         .map(|m| Model::Monster(*m.clone())),
-        // );
-        // results.extend(
-        //     Class::find(db, query.clone())?
-        //         .iter()
-        //         .map(|m| Model::Class(*m.clone())),
-        // );
-        // results.extend(
-        //     Condition::find(db, query.clone())?
-        //         .iter()
-        //         .map(|m| Model::Condition(*m.clone())),
-        // );
-        // results.extend(
-        //     MagicSchool::find(db, query.clone())?
-        //         .iter()
-        //         .map(|m| Model::MagicSchool(*m.clone())),
-        // );
-        // results.extend(
-        //     Equipment::find(db, query.clone())?
-        //         .iter()
-        //         .map(|m| Model::Equipment(*m.clone())),
-        // );
-        // results.extend(
-        //     Feature::find(db, query.clone())?
-        //         .iter()
-        //         .map(|m| Model::Feature(*m.clone())),
-        // );
-        //
-        // for r in results {
-        //     mresults.insert(r.id(), r);
-        // }
-        //
-        // let mut ordered_results = Vec::new();
-        // for id in ids {
-        //     if let Some(r) = mresults.get(&id) {
-        //         ordered_results.push(Box::new(r.clone()));
-        //     }
-        // }
-        // END old implementation
 
         Ok(results)
     }

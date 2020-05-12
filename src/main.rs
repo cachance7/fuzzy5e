@@ -4,8 +4,6 @@ extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
 
-
-
 mod client;
 mod db;
 mod index;
@@ -16,7 +14,6 @@ mod tantivy;
 
 use std::fs::File;
 use simplelog;
-use client::{Client, ClientOptions, Mode};
 use crate::tantivy::*;
 use db::DB;
 use model::*;
@@ -28,15 +25,14 @@ use tuikit::canvas;
 use tuikit::prelude::*;
 use std::fmt;
 use std::str::FromStr;
-use std::net::ToSocketAddrs;
 use std::fmt::{Display,Formatter};
 use std::sync::{
     Arc, Mutex,
 };
 
 struct Config {
-    sonic_addr: String,
     mongo_addr: String,
+    index_dir: String,
 }
 
 quick_error! {
@@ -66,8 +62,8 @@ struct Cli {
     /// Optional command. If not provided, program will be run in REPL mode
     action: Option<CliAction>,
 
-    #[structopt(short, long, default_value = "[::1]:1491", env = "SONIC_ADDR")]
-    sonic_addr: String,
+    #[structopt(short, long, default_value = "./index", env = "INDEX_DIR")]
+    index_dir: String,
 
     #[structopt(short, long, default_value = "localhost:27017", env = "MONGO_ADDR")]
     mongo_addr: String,
@@ -86,10 +82,10 @@ enum Action {
     Resize,
 }
 
-fn update_matches(idx: impl index::Indexer, conn: &DB, query: &str, matches: Arc<Mutex<Vec<Box<Model>>>>) {
+fn update_matches(idx: impl index::Indexer, query: &str, matches: Arc<Mutex<Vec<Box<Model>>>>) {
     if let Ok(mut matches) = matches.lock() {
         matches.clear();
-        matches.extend(Model::indexed_query(idx, conn, query).unwrap());
+        matches.extend(Model::indexed_query(idx, query).unwrap());
     }
 }
 
@@ -338,37 +334,16 @@ impl Screen5e {
 
 fn do_query(config: Config, query: &str) -> std::result::Result<(), Box<dyn Error>> {
     trace!("do_query");
-    let db = DB::connect(&config.mongo_addr).expect("failed to connect to mongodb");
-    let options = ClientOptions{ addr: config.sonic_addr.to_socket_addrs()?.next().unwrap(), ..ClientOptions::default()};
-    let mut idx = Client::connect(options).expect("failed to connect to sonic");
-    let results = Model::indexed_query(idx.clone(), &db, &query);
+    let idx = Tantivy::new(TantivyOptions{index_dir: config.index_dir, ..TantivyOptions::default()});
+    let results = Model::indexed_query(idx.clone(), &query);
     println!("{:?}", results);
-    idx.disconnect()?;
-    Ok(())
-}
-
-fn do_reindex_sonic(config: Config) -> std::result::Result<(), Box<dyn Error>> {
-    trace!("do_query");
-    let db = DB::connect(&config.mongo_addr).expect("failed to connect to mongodb");
-    let options = ClientOptions {
-        addr: config.sonic_addr.to_socket_addrs()?.next().unwrap(),
-        mode: Mode::Ingest,
-        ..ClientOptions::default()
-    };
-    let mut idx = Client::connect(options).expect("failed to connect to sonic");
-
-    Model::flush_all(idx.clone())?;
-    Model::index_all(idx.clone(), &db)?;
-
-    idx.disconnect()?;
     Ok(())
 }
 
 fn do_reindex(config: Config) -> std::result::Result<(), Box<dyn Error>> {
     trace!("do_query");
     let db = DB::connect(&config.mongo_addr).expect("failed to connect to mongodb");
-
-    let idx = Tantivy::new(TantivyOptions{rebuild: true, ..TantivyOptions::default()});
+    let idx = Tantivy::new(TantivyOptions{rebuild: true, index_dir: config.index_dir, ..TantivyOptions::default()});
 
     Model::index_all(idx.clone(), &db)?;
 
@@ -414,7 +389,6 @@ fn do_run(config: Config) -> std::result::Result<(), Box<dyn Error>> {
     let q2 = Arc::clone(&query);
 
     let matches = Arc::new(Mutex::new(Vec::new()));
-    // let m2 = Arc::clone(&matches);
 
     // Term is thread-safe
     let term = Arc::new(Term::new().unwrap());
@@ -426,9 +400,7 @@ fn do_run(config: Config) -> std::result::Result<(), Box<dyn Error>> {
         // NOTE: Keep these connections inside the thread. For some reason starting
         // these from the main thread and then moving them prevents tuikit from
         // receiving WINCH signals :/
-        let db = DB::connect(&config.mongo_addr).expect("This should not fail");
-        let idx = Tantivy::new(TantivyOptions::default());
-        // let idx = Client::connect(ClientOptions{addr: config.sonic_addr.to_socket_addrs().unwrap().next().unwrap(), ..ClientOptions::default()}).expect("failed to connect to sonic");
+        let idx = Tantivy::new(TantivyOptions{index_dir: config.index_dir, ..TantivyOptions::default()});
         let mut last = String::default();
         loop {
             let q = if let Ok(query) = query.lock() {
@@ -439,7 +411,7 @@ fn do_run(config: Config) -> std::result::Result<(), Box<dyn Error>> {
 
             if q != last && !q.is_empty() {
                 debug!("query is different");
-                update_matches(idx.clone(), &db, &q, Arc::clone(&matches));
+                update_matches(idx.clone(), &q, Arc::clone(&matches));
                 last.clear();
                 last.push_str(&q);
                 if let Ok(sc2) = sc2.lock() {
@@ -550,15 +522,6 @@ fn do_run(config: Config) -> std::result::Result<(), Box<dyn Error>> {
     }
 }
 
-/// Checks sonic to see if docs need to be indexed
-fn indexing_required(idx: &Client, conn: &DB) -> bool {
-    if let Ok(res) = Model::indexed_query(idx.clone(), conn, "fire") {
-        res.is_empty()
-    } else {
-        true
-    }
-}
-
 fn main() -> std::result::Result<(), Box<dyn Error>> {
     let level = if let Ok(level) = std::env::var("RUST_LOG") {
         if let Ok(lf) = simplelog::LevelFilter::from_str(&level) {
@@ -572,8 +535,8 @@ fn main() -> std::result::Result<(), Box<dyn Error>> {
     let cli = Cli::from_args();
 
     let config = Config {
-        sonic_addr: cli.sonic_addr,
         mongo_addr: cli.mongo_addr,
+        index_dir: cli.index_dir,
     };
 
 
