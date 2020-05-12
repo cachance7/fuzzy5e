@@ -66,7 +66,17 @@ fuzzy5e is a terminal UI written in Rust. It has been tested on Mac OSX Catalina
 
 [Rust >=1.40](https://www.rust-lang.org/tools/install) (if building from source)
 
-### Installation
+### Installation (from release)
+
+1. Download [latest binary and index](https://github.com/cachance7/fuzzy5e/releases/latest)
+2. Extract locally
+3. Run the executable and point to index
+
+```sh
+fuzzy5e -i path/to/indexdir
+```
+
+### Installation (from git repo)
 
 1. Clone the repo
 ```sh
