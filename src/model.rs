@@ -1,5 +1,6 @@
 use crate::client::{Client, IngestRequestMessage, ResponseMessage, SearchRequestMessage};
 use crate::db::DB;
+use crate::index::*;
 use bson::{doc, oid::ObjectId, Document};
 use mongodb::options::FindOptions;
 use unicode_linebreak::{linebreaks, BreakOpportunity};
@@ -8,8 +9,6 @@ use quick_error::quick_error;
 use std::convert::{TryFrom, TryInto};
 use tuikit::canvas;
 use tuikit::prelude::*;
-
-const RESULTS_MIN: usize = 10;
 
 pub trait ScrollDraw {
     fn draw(&self, canvas: &mut dyn Canvas, scroll: usize) -> canvas::Result<()>;
@@ -100,16 +99,11 @@ pub trait Collection {
     fn collection() -> String;
 }
 
-pub trait Index {
-    fn id(&self) -> String;
-    fn tuples(&self) -> Vec<(String, String, String, String)>;
-}
-
 pub trait ModelQuery {
     type Item: From<Document> + Collection + Index;
 
     /// Returns a cursor which will iterate over all items in the collection.
-    fn all(d: &DB) -> Result<Vec<Self::Item>> {
+    fn all(d: &DB) -> Result<Vec<Box<Self::Item>>> {
         let all = doc! {};
 
         Self::find(d, all)
@@ -117,14 +111,14 @@ pub trait ModelQuery {
 
     /// Performs a text search for the provided query. MongoDB requires that an index exist before
     /// using this.
-    fn search(d: &DB, qs: &str) -> Result<Vec<Self::Item>> {
+    fn search(d: &DB, qs: &str) -> Result<Vec<Box<Self::Item>>> {
         let query = doc! {"$text": {"$search": qs}};
 
         Self::find(d, query)
     }
 
     /// Fetches all documents matching the provided MongoDB doc query.
-    fn find(d: &DB, query: bson::Document) -> Result<Vec<Self::Item>> {
+    fn find(d: &DB, query: bson::Document) -> Result<Vec<Box<Self::Item>>> {
         let res = d
             .with_db(|db| {
                 db.collection(&Self::Item::collection())
@@ -135,47 +129,22 @@ pub trait ModelQuery {
             .unwrap();
         Ok(res
             .iter()
-            .map(|d: &Document| Self::Item::from(d.clone()))
+            .map(|d: &Document| Box::new(Self::Item::from(d.clone())))
             .collect())
     }
 
-    fn flush_all(c: &Client) -> Result<Box<ResponseMessage>> {
-        c.send(IngestRequestMessage::Flushc(&Self::Item::collection()))
+    fn flush_all(c: impl Indexer) -> std::result::Result<(), IndexError> {
+        c.flush_all(&Self::Item::collection())
     }
 
     /// Indexes all items in the collection. For speed purposes, this does not wait for
     /// confirmation before continuing.
-    fn index_all(s: &Client, db: &DB) -> Result<()> {
-        for model in Self::all(db).unwrap() {
-            for t in model.tuples() {
-                let (collection, bucket, object, text) = t;
-                trace!("indexing item {:?}", (&collection, &bucket, &object, &text));
-
-                s.send(IngestRequestMessage::Push(
-                    &collection,
-                    &bucket,
-                    &object,
-                    &text,
-                ))?;
-            }
-        }
-        Ok(())
+    fn index_all(s: impl Indexer, db: &DB) -> std::result::Result<(), IndexError> {
+        s.index_bulk(Self::all(db).unwrap())
     }
 
-    fn indexed_query(s: &Client, db: &DB, qs: &str) -> Result<Vec<Self::Item>> {
-        trace!("querying sonic");
-        let res = s.send(SearchRequestMessage::Query(
-            &Self::Item::collection(),
-            "name",
-            qs,
-        ))?;
-        debug!("done sonic query {:?}", res);
-
-        let mut ids = Vec::default();
-        match *res {
-            ResponseMessage::Event(evt) => ids.extend_from_slice(&evt.data),
-            _ => unreachable!(),
-        }
+    fn indexed_query(s: impl Indexer, db: &DB, qs: &str) -> Result<Vec<Box<Self::Item>>> {
+        let ids = s.query(&Self::Item::collection(), qs)?;
 
         // heymywife is the best wife she's so hot and fun and smart and loevly and I'm the best too for making her drinks}
 
@@ -383,21 +352,21 @@ impl From<Document> for Model {
     }
 }
 
-type ModelQueryFn = Box<dyn (Fn(&DB) -> Vec<Model>) + Send + 'static>;
+type ModelQueryFn = Box<dyn (Fn(&DB) -> Vec<Box<Model>>) + Send + 'static>;
 
 impl ModelQuery for Model {
     type Item = Model;
 
     /// Flushes _all_ collections from the index.
-    fn flush_all(c: &Client) -> Result<Box<ResponseMessage>> {
-        Spell::flush_all(c)?;
-        Monster::flush_all(c)?;
-        Condition::flush_all(c)?;
-        Class::flush_all(c)?;
-        MagicSchool::flush_all(c)?;
-        Equipment::flush_all(c)?;
-        Feature::flush_all(c)?;
-        c.send(IngestRequestMessage::Flushc(&Self::Item::collection()))
+    fn flush_all(c: impl Indexer) -> std::result::Result<(), IndexError> {
+        Spell::flush_all(c.clone())?;
+        Monster::flush_all(c.clone())?;
+        Condition::flush_all(c.clone())?;
+        Class::flush_all(c.clone())?;
+        MagicSchool::flush_all(c.clone())?;
+        Equipment::flush_all(c.clone())?;
+        Feature::flush_all(c.clone())?;
+        c.flush_all(&Self::Item::collection())
     }
 
     /// This index_all variant pulls the results into a global collection "all".
@@ -413,117 +382,81 @@ impl ModelQuery for Model {
     /// # global push
     /// > PUSH all name spells:12345 "magic fireball"
     ///
-    fn index_all(s: &Client, database: &DB) -> Result<()> {
+    fn index_all(s: impl Indexer, database: &DB) -> std::result::Result<(), IndexError> {
         let fns: Vec<ModelQueryFn> = vec![
             Box::new(|db| {
                 Spell::all(db)
                     .unwrap()
                     .iter()
-                    .map(|s| Model::Spell(s.clone()))
+                    .map(|s| Box::new(Model::Spell(*s.clone())))
                     .collect()
             }),
             Box::new(|db| {
                 Monster::all(db)
                     .unwrap()
                     .iter()
-                    .map(|s| Model::Monster(s.clone()))
+                    .map(|s| Box::new(Model::Monster(*s.clone())))
                     .collect()
             }),
             Box::new(|db| {
                 Class::all(db)
                     .unwrap()
                     .iter()
-                    .map(|s| Model::Class(s.clone()))
+                    .map(|s| Box::new(Model::Class(*s.clone())))
                     .collect()
             }),
             Box::new(|db| {
                 Condition::all(db)
                     .unwrap()
                     .iter()
-                    .map(|s| Model::Condition(s.clone()))
+                    .map(|s| Box::new(Model::Condition(*s.clone())))
                     .collect()
             }),
             Box::new(|db| {
                 MagicSchool::all(db)
                     .unwrap()
                     .iter()
-                    .map(|s| Model::MagicSchool(s.clone()))
+                    .map(|s| Box::new(Model::MagicSchool(*s.clone())))
                     .collect()
             }),
             Box::new(|db| {
                 Equipment::all(db)
                     .unwrap()
                     .iter()
-                    .map(|s| Model::Equipment(s.clone()))
+                    .map(|s| Box::new(Model::Equipment(*s.clone())))
                     .collect()
             }),
             Box::new(|db| {
                 Feature::all(db)
                     .unwrap()
                     .iter()
-                    .map(|s| Model::Feature(s.clone()))
+                    .map(|s| Box::new(Model::Feature(*s.clone())))
                     .collect()
             }),
         ];
         for f in fns {
-            for model in f(database) {
-                // Indexes into the global collection
-                for t in model.tuples() {
-                    let (collection, bucket, object, text) = t;
-                    trace!("indexing item {:?}", (&collection, &bucket, &object, &text));
-
-                    s.send(IngestRequestMessage::Push(
-                        &collection,
-                        &bucket,
-                        &object,
-                        &text,
-                    ))?;
-                }
-                // Indexes into the model-specific collection
-                for t in model.inner_index().unwrap().tuples() {
-                    let (collection, bucket, object, text) = t;
-                    trace!("indexing item {:?}", (&collection, &bucket, &object, &text));
-
-                    s.send(IngestRequestMessage::Push(
-                        &collection,
-                        &bucket,
-                        &object,
-                        &text,
-                    ))?;
-                }
-            }
+            s.index_bulk(f(database));
+            // for model in f(database) {
+            //     // Indexes into the global collection
+            //     s.index(Box::new(model));
+            //     match model {
+            //         Self::Spell(m) => Ok(Box::new(&m.clone())),
+            //         Self::Class(m) => Ok(Box::new(&m.clone())),
+            //         Self::Monster(m) => Ok(Box::new(&m.clone())),
+            //         Self::Condition(m) => Ok(Box::new(&m.clone())),
+            //         Self::MagicSchool(m) => Ok(Box::new(&m.clone())),
+            //         Self::Equipment(m) => Ok(Box::new(&m.clone())),
+            //         Self::Feature(m) => Ok(Box::new(&m.clone())),
+            //         _ => Err(Box::new(ModelError::NoInnerIndex("Model"))),
+            //     }
+            // }
         }
         Ok(())
     }
 
-    fn indexed_query(s: &Client, db: &DB, qs: &str) -> Result<Vec<Self::Item>> {
-        let mut ids = Vec::default();
-        trace!("querying sonic");
-        let res = s.send(SearchRequestMessage::Query(
-            &Self::Item::collection(),
-            "name",
-            qs,
-        ))?;
-        debug!("done sonic query {:?}", res);
-
-        match *res {
-            ResponseMessage::Event(evt) => ids.extend_from_slice(&evt.data),
-            _ => unreachable!(),
-        }
-
-        if ids.len() < RESULTS_MIN {
-            let res = s.send(SearchRequestMessage::Query(
-                &Self::Item::collection(),
-                "desc",
-                qs,
-            ))?;
-            debug!("done sonic query {:?}", res);
-
-            match *res {
-                ResponseMessage::Event(evt) => ids.extend_from_slice(&evt.data),
-                _ => unreachable!(),
-            }
-        }
+    /// Implementation for Model enum. This performs a query across all types.
+    fn indexed_query(s: impl Indexer, db: &DB, qs: &str) -> Result<Vec<Box<Self::Item>>> {
+        let ids = s.query(&Self::Item::collection(), qs)?;
 
         let sids: Vec<(&str, &str)> = ids
             .iter()
@@ -547,37 +480,37 @@ impl ModelQuery for Model {
         results.extend(
             Spell::find(db, query.clone())?
                 .iter()
-                .map(|m| Model::Spell(m.clone())),
+                .map(|m| Model::Spell(*m.clone())),
         );
         results.extend(
             Monster::find(db, query.clone())?
                 .iter()
-                .map(|m| Model::Monster(m.clone())),
+                .map(|m| Model::Monster(*m.clone())),
         );
         results.extend(
             Class::find(db, query.clone())?
                 .iter()
-                .map(|m| Model::Class(m.clone())),
+                .map(|m| Model::Class(*m.clone())),
         );
         results.extend(
             Condition::find(db, query.clone())?
                 .iter()
-                .map(|m| Model::Condition(m.clone())),
+                .map(|m| Model::Condition(*m.clone())),
         );
         results.extend(
             MagicSchool::find(db, query.clone())?
                 .iter()
-                .map(|m| Model::MagicSchool(m.clone())),
+                .map(|m| Model::MagicSchool(*m.clone())),
         );
         results.extend(
             Equipment::find(db, query.clone())?
                 .iter()
-                .map(|m| Model::Equipment(m.clone())),
+                .map(|m| Model::Equipment(*m.clone())),
         );
         results.extend(
             Feature::find(db, query.clone())?
                 .iter()
-                .map(|m| Model::Feature(m.clone())),
+                .map(|m| Model::Feature(*m.clone())),
         );
 
         for r in results {
@@ -587,7 +520,7 @@ impl ModelQuery for Model {
         let mut ordered_results = Vec::new();
         for id in ids {
             if let Some(r) = mresults.get(&id) {
-                ordered_results.push(r.clone());
+                ordered_results.push(Box::new(r.clone()));
             }
         }
 

@@ -4,16 +4,20 @@ extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
 
+
+
 mod client;
 mod db;
-// mod index;
+mod index;
 mod model;
 // mod print;
 mod worker;
+mod tantivy;
 
 use std::fs::File;
 use simplelog;
 use client::{Client, ClientOptions, Mode};
+use crate::tantivy::*;
 use db::DB;
 use model::*;
 use quick_error::quick_error;
@@ -82,14 +86,14 @@ enum Action {
     Resize,
 }
 
-fn update_matches(idx: &Client, conn: &DB, query: &str, matches: Arc<Mutex<Vec<Model>>>) {
+fn update_matches(idx: &Client, conn: &DB, query: &str, matches: Arc<Mutex<Vec<Box<Model>>>>) {
     if let Ok(mut matches) = matches.lock() {
         matches.clear();
-        matches.extend(Model::indexed_query(idx, conn, query).unwrap());
+        matches.extend(Model::indexed_query(idx.clone(), conn, query).unwrap());
     }
 }
 
-struct Selection(Option<Model>, usize);
+struct Selection(Option<Box<Model>>, usize);
 
 impl Draw for Selection {
     fn draw(&self, canvas: &mut dyn Canvas) -> canvas::Result<()> {
@@ -104,7 +108,7 @@ impl Draw for Selection {
 impl Widget for Selection {}
 
 struct Matches {
-    matches: Arc<Mutex<Vec<Model>>>,
+    matches: Arc<Mutex<Vec<Box<Model>>>>,
     selected: usize,
 }
 
@@ -183,7 +187,7 @@ enum Layout {
 
 struct Screen5e {
     query: Arc<Mutex<Query>>,
-    matches: Arc<Mutex<Vec<Model>>>,
+    matches: Arc<Mutex<Vec<Box<Model>>>>,
     selected: usize,
     scroll: usize,
     term: Arc<Term>,
@@ -204,7 +208,7 @@ impl Drop for Screen5e {
 */
 
 impl Screen5e {
-    fn new(term: Arc<Term>, query: Arc<Mutex<Query>>, matches: Arc<Mutex<Vec<Model>>>) -> Screen5e {
+    fn new(term: Arc<Term>, query: Arc<Mutex<Query>>, matches: Arc<Mutex<Vec<Box<Model>>>>) -> Screen5e {
         Screen5e {
             query,
             matches,
@@ -337,13 +341,13 @@ fn do_query(config: Config, query: &str) -> std::result::Result<(), Box<dyn Erro
     let db = DB::connect(&config.mongo_addr).expect("failed to connect to mongodb");
     let options = ClientOptions{ addr: config.sonic_addr.to_socket_addrs()?.next().unwrap(), ..ClientOptions::default()};
     let mut idx = Client::connect(options).expect("failed to connect to sonic");
-    let results = Model::indexed_query(&idx, &db, &query);
+    let results = Model::indexed_query(idx.clone(), &db, &query);
     println!("{:?}", results);
     idx.disconnect()?;
     Ok(())
 }
 
-fn do_reindex(config: Config) -> std::result::Result<(), Box<dyn Error>> {
+fn do_reindex_sonic(config: Config) -> std::result::Result<(), Box<dyn Error>> {
     trace!("do_query");
     let db = DB::connect(&config.mongo_addr).expect("failed to connect to mongodb");
     let options = ClientOptions {
@@ -353,10 +357,22 @@ fn do_reindex(config: Config) -> std::result::Result<(), Box<dyn Error>> {
     };
     let mut idx = Client::connect(options).expect("failed to connect to sonic");
 
-    Model::flush_all(&idx)?;
-    Model::index_all(&idx, &db)?;
+    Model::flush_all(idx.clone())?;
+    Model::index_all(idx.clone(), &db)?;
 
     idx.disconnect()?;
+    Ok(())
+}
+
+fn do_reindex(config: Config) -> std::result::Result<(), Box<dyn Error>> {
+    trace!("do_query");
+    let db = DB::connect(&config.mongo_addr).expect("failed to connect to mongodb");
+
+    let idx = Tantivy::new(TantivyOptions::default());
+
+    Model::flush_all(idx.clone())?;
+    Model::index_all(idx.clone(), &db)?;
+
     Ok(())
 }
 
@@ -536,7 +552,7 @@ fn do_run(config: Config) -> std::result::Result<(), Box<dyn Error>> {
 
 /// Checks sonic to see if docs need to be indexed
 fn indexing_required(idx: &Client, conn: &DB) -> bool {
-    if let Ok(res) = Model::indexed_query(idx, conn, "fire") {
+    if let Ok(res) = Model::indexed_query(idx.clone(), conn, "fire") {
         res.is_empty()
     } else {
         true

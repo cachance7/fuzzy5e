@@ -1,4 +1,5 @@
 use crate::worker::TcpStreamWorker;
+use crate::index::*;
 use derivative::Derivative;
 // use log::{debug, info, warn};
 // use std::collections::VecDeque;
@@ -14,6 +15,8 @@ use std::sync::{
 };
 use std::thread::{spawn, JoinHandle};
 use std::time::Duration;
+
+const RESULTS_MIN: usize = 10;
 
 #[derive(Debug)]
 pub enum ClientError {
@@ -422,5 +425,68 @@ impl Client {
         let _ = inner.event_loop.take().unwrap().join();
 
         Ok(())
+    }
+}
+
+impl Indexer for Client {
+    fn index<T: Index>(&self, idx: Box<T>) -> std::result::Result<(), IndexError> {
+        for t in idx.tuples() {
+            let (collection, bucket, object, text) = t;
+            trace!("indexing item {:?}", (&collection, &bucket, &object, &text));
+
+            if let Err(e) = self.send(IngestRequestMessage::Push(
+                &collection,
+                &bucket,
+                &object,
+                &text,
+            )) {
+                return Err(IndexError::ProcessingError)
+            }
+        }
+        Ok(())
+    }
+    fn index_bulk<T: Index>(&self, curs: Vec<Box<T>>) -> Result<(), IndexError> {
+        for idx in curs {
+            self.index(idx);
+        }
+        Ok(())
+    }
+    fn flush_all(&self, collection: &str) -> std::result::Result<(), IndexError> {
+        if let Err(e) = self.send(IngestRequestMessage::Flushc(collection)) {
+            return Err(IndexError::ProcessingError)
+        }
+        Ok(())
+    }
+
+    fn query(&self, col: &str, query: &str) -> Result<Vec<String>, IndexError> {
+        trace!("querying sonic");
+        let mut ids = Vec::new();
+        let res = self.send(SearchRequestMessage::Query(
+            col,
+            "name",
+            query,
+        )).unwrap();
+        debug!("done sonic query {:?}", res);
+
+        match *res {
+            ResponseMessage::Event(evt) => ids.extend_from_slice(&evt.data),
+            _ => unreachable!(),
+        }
+
+        if ids.len() < RESULTS_MIN {
+            let res = self.send(SearchRequestMessage::Query(
+                col,
+                "desc",
+                query,
+            )).unwrap();
+            debug!("done sonic query {:?}", res);
+
+            match *res {
+                ResponseMessage::Event(evt) => ids.extend_from_slice(&evt.data),
+                _ => unreachable!(),
+            }
+        }
+
+        Ok(ids)
     }
 }

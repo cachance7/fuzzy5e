@@ -1,10 +1,28 @@
-use crate::client::{Client, ResponseMessage, SearchRequestMessage};
-use crate::db::DB;
-use crate::model::*;
-use bson::{doc, oid::ObjectId, Document};
-use mongodb::Database;
-// use sonic_client::{ingest::IngestChan, search::SearchChan};
-use tuikit::prelude::Result;
+use std::error::Error;
+use std::{fmt, fmt::{Display, Formatter}};
 
-pub trait Index: ModelQuery + Tuples {}
-impl Index<Spell> for Spell {}
+#[derive(Debug)]
+pub enum IndexError {
+    // ConnectionError,
+    ProcessingError,
+}
+
+impl Display for IndexError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self)?;
+        Ok(())
+    }
+}
+
+impl Error for IndexError {}
+pub trait Indexer : Clone {
+    fn index<T: Index>(&self, idx: Box<T>) -> Result<(), IndexError>;
+    fn index_bulk<T: Index>(&self, idx: Vec<Box<T>>) -> Result<(), IndexError>;
+    fn query(&self, col: &str, query: &str) -> Result<Vec<String>, IndexError>;
+    fn flush_all(&self, col: &str) -> Result<(), IndexError>;
+}
+
+pub trait Index {
+    fn id(&self) -> String;
+    fn tuples(&self) -> Vec<(String, String, String, String)>;
+}
