@@ -6,6 +6,7 @@ use tantivy::directory::MmapDirectory;
 use tantivy::collector::TopDocs;
 use tantivy::query::QueryParser;
 use tantivy::schema::*;
+use tantivy::tokenizer::*;
 use tantivy::{doc, Index, ReloadPolicy, IndexWriter, IndexReader};
 
 const BULK_COUNT: usize = 100;
@@ -42,13 +43,30 @@ impl Tantivy {
 
         let mut schema_builder = Schema::builder();
 
+        let en_stem_plus = TextAnalyzer::from(NgramTokenizer::new(2, 10, true))
+            .filter(RemoveLongFilter::limit(40))
+            .filter(LowerCaser)
+            .filter(Stemmer::new(Language::English));
+
+
+        let text_options = TextOptions::default()
+            .set_indexing_options(
+                TextFieldIndexing::default()
+                    .set_tokenizer("en_stem_plus")
+                    .set_index_option(IndexRecordOption::WithFreqsAndPositions)
+            );
+
         schema_builder.add_text_field("id", STORED);
         schema_builder.add_text_field("type", TEXT);
+        schema_builder.add_text_field("name_ng", text_options.clone());
         schema_builder.add_text_field("name", TEXT);
         schema_builder.add_text_field("desc", TEXT);
+        schema_builder.add_bytes_field("doc");
 
         let schema = schema_builder.build();
         let index = Index::open_or_create(MmapDirectory::open(&options.index_dir).unwrap(), schema.clone()).unwrap();
+
+        index.tokenizers().register("en_stem_plus", en_stem_plus);
 
         let reader = index
             .reader_builder()
@@ -56,8 +74,10 @@ impl Tantivy {
             .try_into().unwrap();
 
         let name = schema.get_field("name").unwrap();
+        let name_ng = schema.get_field("name_ng").unwrap();
         let desc = schema.get_field("desc").unwrap();
-        let qp = QueryParser::for_index(&index, vec![name, desc]);
+        let t = schema.get_field("type").unwrap();
+        let qp = QueryParser::for_index(&index, vec![name, name_ng, desc]);
 
         Self { options, index, reader, qp }
     }
@@ -79,16 +99,21 @@ impl index::Indexer for Tantivy {
     fn index_bulk<T: index::Index>(&self, curs: Vec<Box<T>>) -> Result<(), index::IndexError> {
         let mut writer = self.index.writer(50_000_000).unwrap();
         let mut i = 0;
-        for idx in curs.into_iter() {
+        for idx in curs {
             let mut doc = Document::default();
             for (j, t) in idx.tuples().iter().enumerate() {
                 if j == 0 {
                     let id_field = self.index.schema().get_field("id").unwrap();
                     doc.add_text(id_field, &t.2);
                 }
+                if t.1 == "name" {
+                    let f = self.index.schema().get_field("name_ng").unwrap();
+                    doc.add_text(f, &t.3);
+                }
                 let field = self.index.schema().get_field(&t.1).unwrap();
                 doc.add_text(field, &t.3);
             }
+            doc.add_bytes(self.index.schema().get_field("doc").unwrap(), idx.to_bytes());
             writer.add_document(doc);
             i += 1;
 
@@ -110,11 +135,14 @@ impl index::Indexer for Tantivy {
 
         let query = self.qp.parse_query(qs).unwrap();
 
-        let top_docs = searcher.search(&query, &TopDocs::with_limit(10)).unwrap();
-        let ids = Vec::new();
+        let top_docs = searcher.search(&query, &TopDocs::with_limit(30)).unwrap();
+        let mut ids = Vec::new();
+        let id = self.index.schema().get_field("id").unwrap();
         for (_score, doc_address) in top_docs {
             let retrieved_doc = searcher.doc(doc_address).unwrap();
-            println!("{}", self.index.schema().to_json(&retrieved_doc));
+            let val = retrieved_doc.get_first(id).unwrap();
+            ids.push(String::from(val.text().unwrap()));
+            // println!("{}", self.index.schema().to_json(&retrieved_doc));
         }
 
         Ok(ids)

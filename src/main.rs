@@ -86,10 +86,10 @@ enum Action {
     Resize,
 }
 
-fn update_matches(idx: &Client, conn: &DB, query: &str, matches: Arc<Mutex<Vec<Box<Model>>>>) {
+fn update_matches(idx: impl index::Indexer, conn: &DB, query: &str, matches: Arc<Mutex<Vec<Box<Model>>>>) {
     if let Ok(mut matches) = matches.lock() {
         matches.clear();
-        matches.extend(Model::indexed_query(idx.clone(), conn, query).unwrap());
+        matches.extend(Model::indexed_query(idx, conn, query).unwrap());
     }
 }
 
@@ -428,7 +428,8 @@ fn do_run(config: Config) -> std::result::Result<(), Box<dyn Error>> {
         // these from the main thread and then moving them prevents tuikit from
         // receiving WINCH signals :/
         let db = DB::connect(&config.mongo_addr).expect("This should not fail");
-        let idx = Client::connect(ClientOptions{addr: config.sonic_addr.to_socket_addrs().unwrap().next().unwrap(), ..ClientOptions::default()}).expect("failed to connect to sonic");
+        let idx = Tantivy::new(TantivyOptions::default());
+        // let idx = Client::connect(ClientOptions{addr: config.sonic_addr.to_socket_addrs().unwrap().next().unwrap(), ..ClientOptions::default()}).expect("failed to connect to sonic");
         let mut last = String::default();
         loop {
             let q = if let Ok(query) = query.lock() {
@@ -439,7 +440,7 @@ fn do_run(config: Config) -> std::result::Result<(), Box<dyn Error>> {
 
             if q != last && !q.is_empty() {
                 debug!("query is different");
-                update_matches(&idx, &db, &q, Arc::clone(&matches));
+                update_matches(idx.clone(), &db, &q, Arc::clone(&matches));
                 last.clear();
                 last.push_str(&q);
                 if let Ok(sc2) = sc2.lock() {

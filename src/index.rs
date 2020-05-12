@@ -22,7 +22,11 @@ pub trait Indexer : Clone {
     fn flush_all(&self, col: &str) -> Result<(), IndexError>;
 }
 
-pub trait Index {
+pub trait ToBytes {
+    fn to_bytes(&self) -> Vec<u8>;
+}
+
+pub trait Index: ToBytes {
     fn id(&self) -> String;
     fn tuples(&self) -> Vec<(String, String, String, String)>;
 }

@@ -440,6 +440,7 @@ impl Indexer for Client {
                 &object,
                 &text,
             )) {
+                error!("failed to index: {}", e);
                 return Err(IndexError::ProcessingError)
             }
         }
@@ -447,12 +448,15 @@ impl Indexer for Client {
     }
     fn index_bulk<T: Index>(&self, curs: Vec<Box<T>>) -> Result<(), IndexError> {
         for idx in curs {
-            self.index(idx);
+            if let Err(e) = self.index(idx) {
+                error!("failed to index: {}", e);
+            }
         }
         Ok(())
     }
     fn flush_all(&self, collection: &str) -> std::result::Result<(), IndexError> {
         if let Err(e) = self.send(IngestRequestMessage::Flushc(collection)) {
+            error!("error encountered in flush_all: {}", e);
             return Err(IndexError::ProcessingError)
         }
         Ok(())

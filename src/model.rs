@@ -1,4 +1,3 @@
-use crate::client::{Client, IngestRequestMessage, ResponseMessage, SearchRequestMessage};
 use crate::db::DB;
 use crate::index::*;
 use bson::{doc, oid::ObjectId, Document};
@@ -345,6 +344,25 @@ impl Index for Model {
     }
 }
 
+impl ToBytes for Model {
+    fn to_bytes(&self) -> Vec<u8> {
+        match self {
+            Self::Spell(m) => m.to_bytes(),
+            Self::Monster(m) => m.to_bytes(),
+            Self::Class(m) => m.to_bytes(),
+            Self::Condition(m) => m.to_bytes(),
+            Self::MagicSchool(m) => m.to_bytes(),
+            Self::Equipment(m) => m.to_bytes(),
+            Self::Feature(m) => m.to_bytes(),
+            Self::Unknown(m) => {
+                let mut buf = Vec::new();
+                bson::encode_document(&mut buf, m).unwrap();
+                buf
+            }
+        }
+    }
+}
+
 /// TODO I don't think this implementation is actually used anywhere...
 impl From<Document> for Model {
     fn from(d: Document) -> Self {
@@ -547,6 +565,19 @@ macro_rules! impl_From {
         })*
     }
 }
+
+macro_rules! impl_ToBytes {
+    (for $($t:ident),+) => {
+        $(impl ToBytes for $t {
+            fn to_bytes(&self) -> Vec<u8> {
+                let mut buf = Vec::new();
+                bson::encode_document(&mut buf, &self.document).unwrap();
+                buf
+            }
+        })*
+    }
+}
+
 fn get_break_idx(line: &str, width: usize) -> usize {
     if line.len() < width {
         return line.len();
@@ -1522,3 +1553,4 @@ impl DisplayName for Feature {
 }
 
 impl_From!(for Spell, Monster, Condition, Class, Subclass, Race, Feature);
+impl_ToBytes!(for Spell, Monster, Condition, Class, Subclass, Race, Feature, Equipment, MagicSchool);
